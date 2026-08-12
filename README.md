@@ -19,7 +19,7 @@ Many candidates struggle to stand out in competitive hiring processes because th
 4. AI provides resume feedback and an ATS-style score.
 5. User chooses a target job role and interview type.
 6. AI generates personalized interview questions.
-7. User answers through text initially and voice later.
+7. User answers through text or browser-powered voice transcription.
 8. AI evaluates each answer.
 9. The platform generates feedback, scores, and improved answers.
 10. Users track deterministic performance analytics over multiple interview sessions.
@@ -48,6 +48,26 @@ Authenticated endpoints:
 
 Score averages use only evaluations whose status is `COMPLETED`. Category and skill results use the category and optional skill stored on each evaluated question. Strongest and lowest measured categories are returned only when at least two categories have evaluated data.
 
+## Voice Interview Mode
+
+Voice mode is available at `/interviews/{id}/voice` alongside the existing text interview route. It uses browser speech capabilities and the same persisted interview session:
+
+```text
+Browser microphone
+        ↓
+Browser speech recognition
+        ↓
+User-reviewed, editable transcript
+        ↓
+Existing Spring Boot answer endpoint
+        ↓
+Existing Gemini transcript evaluation
+```
+
+Questions can be read aloud with browser text-to-speech, including an optional saved auto-read preference. Microphone permission is requested before the first recording. The transcript is never saved automatically: the user can correct recognition errors before submitting it through the existing answer endpoint. InterviewAce does not upload or store raw microphone audio.
+
+Speech recognition availability depends on browser support and may depend on the browser vendor's speech service. Unsupported browsers offer a direct switch back to the text interview.
+
 ## Planned Features
 - Resume upload and parsing
 - Skills extraction and analysis
@@ -55,7 +75,7 @@ Score averages use only evaluations whose status is `COMPLETED`. Category and sk
 - Personalized interview question generation
 - Answer evaluation and improvement suggestions
 - Progress tracking and session history
-- Future voice-based interview support
+- Browser-based voice interview support
 
 ## Technology Stack
 ### Frontend
@@ -79,7 +99,7 @@ Score averages use only evaluations whose status is `COMPLETED`. Category and sk
 - FastAPI
 - Resume text extraction
 - LLM integration
-- Future speech-to-text support
+- Browser speech recognition (frontend only; no raw audio storage)
 
 ## High-Level Architecture
 InterviewAce AI will follow a modular architecture with three main services:
