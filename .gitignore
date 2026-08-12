@@ -1,0 +1,61 @@
+# Java and Maven
+.target/
+target/
+build/
+.gradle/
+.gradle-cache/
+*.class
+*.jar
+*.war
+*.ear
+
+# Node and Vite
+node_modules/
+dist/
+.vite/
+coverage/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.venv/
+venv/
+env/
+ENV/
+.pytest_cache/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# IDE files
+.vscode/
+.idea/
+*.iml
+
+# Build outputs
+out/
+build/
+
+# Uploaded resumes
+uploads/
+resumes/
+
+# Generated reports
+reports/
+generated_reports/
+
+# Logs
+logs/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db

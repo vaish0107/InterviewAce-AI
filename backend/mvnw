@@ -1,0 +1,6 @@
+#!/bin/sh
+basedir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+jar="$basedir/.mvn/wrapper/maven-wrapper.jar"
+url="https://repo.maven.apache.org/maven2/org/apache/maven/wrapper/maven-wrapper/3.3.2/maven-wrapper-3.3.2.jar"
+[ -f "$jar" ] || { command -v curl >/dev/null && curl -fsSL "$url" -o "$jar" || wget -q "$url" -O "$jar"; }
+exec java ${MAVEN_OPTS} -classpath "$jar" "-Dmaven.multiModuleProjectDirectory=$basedir" org.apache.maven.wrapper.MavenWrapperMain "$@"
