@@ -1,5 +1,5 @@
 import { api } from './api'
-import type { CreateInterviewRequest, InterviewAnswerEvaluation, InterviewSession, SubmitAnswerRequest } from '../types/interview'
+import type { CreateInterviewRequest, FollowUpGeneration, InterviewAnswerEvaluation, InterviewSession, SubmitAnswerRequest } from '../types/interview'
 
 export const interviewService = {
   async createInterview(request: CreateInterviewRequest) { return (await api.post<InterviewSession>('/interviews', request)).data },
@@ -15,5 +15,8 @@ export const interviewService = {
   },
   async getAnswerEvaluation(sessionId: number, questionId: number) {
     return (await api.get<InterviewAnswerEvaluation>(`/interviews/${sessionId}/questions/${questionId}/evaluation`)).data
+  },
+  async generateFollowUp(sessionId: number, questionId: number) {
+    return (await api.post<FollowUpGeneration>(`/interviews/${sessionId}/questions/${questionId}/follow-up`)).data
   },
 }

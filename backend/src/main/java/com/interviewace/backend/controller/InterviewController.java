@@ -33,6 +33,10 @@ public class InterviewController {
     @PutMapping("/{sessionId}/questions/{questionId}/answer") @Operation(summary = "Save an interview answer without scoring it")
     public InterviewSessionDto answer(@PathVariable Long sessionId, @PathVariable Long questionId,
             @Valid @RequestBody SubmitAnswerRequest request) { return service.submitAnswer(sessionId, questionId, request); }
+    @PostMapping("/{sessionId}/questions/{questionId}/follow-up") @Operation(summary = "Generate an optional adaptive follow-up")
+    public FollowUpGenerationDto followUp(@PathVariable Long sessionId, @PathVariable Long questionId) {
+        return service.generateFollowUpQuestion(sessionId, questionId);
+    }
     @PostMapping("/{id}/complete") @Operation(summary = "Complete my interview session")
     public InterviewSessionDto complete(@PathVariable Long id) { return service.completeInterview(id); }
 }

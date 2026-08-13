@@ -34,6 +34,9 @@ class InterviewServiceImplTests {
             for (int index = 0; index < values.size(); index++) values.get(index).setId(100L + index);
             return values;
         });
+        when(questions.save(any(InterviewQuestionRecord.class))).thenAnswer(invocation -> {
+            InterviewQuestionRecord value = invocation.getArgument(0); if (value.getId() == null) value.setId(500L); return value;
+        });
         service = new InterviewServiceImpl(sessions, questions, resumes, analyses, evaluations, authenticatedUsers, aiClient,
                 new JsonListMapper(new ObjectMapper()));
     }
@@ -89,12 +92,56 @@ class InterviewServiceImplTests {
         assertEquals(InterviewSessionStatus.COMPLETED, result.status()); assertNotNull(result.completedAt()); verify(sessions).save(session);
     }
 
+    @Test void persistsAdaptiveFollowUpDirectlyAfterParent() {
+        InterviewSession session = session(); InterviewQuestionRecord parent = record(session); parent.setId(100L); parent.setAnswerText("Spring supplies dependencies from outside the class.");
+        InterviewQuestionRecord next = new InterviewQuestionRecord(session, "q2", "Next base", "TECHNICAL", "Java", InterviewDifficulty.MEDIUM, 2); next.setId(101L);
+        when(sessions.findByIdAndUserId(20L, 1L)).thenReturn(Optional.of(session));
+        when(questions.findByIdAndSessionId(100L, 20L)).thenReturn(Optional.of(parent));
+        when(questions.findBySessionIdOrderByQuestionOrder(20L)).thenReturn(List.of(parent, next));
+        when(aiClient.generateFollowUp(any())).thenReturn(new AiFollowUpResponse(true, "Why prefer constructor injection?", "Missing implementation choice.", "Spring DI"));
+        FollowUpGenerationDto result = service.generateFollowUpQuestion(20L, 100L);
+        assertTrue(result.created()); assertTrue(result.question().adaptive()); assertEquals(100L, result.question().parentQuestionId());
+        assertEquals(2, result.question().questionOrder()); assertEquals(3, next.getQuestionOrder());
+    }
+
+    @Test void followUpRequiresSavedAnswer() {
+        InterviewSession session = session(); InterviewQuestionRecord parent = record(session); parent.setId(100L);
+        when(sessions.findByIdAndUserId(20L, 1L)).thenReturn(Optional.of(session));
+        when(questions.findByIdAndSessionId(100L, 20L)).thenReturn(Optional.of(parent));
+        assertThrows(InvalidResumeException.class, () -> service.generateFollowUpQuestion(20L, 100L));
+        verify(aiClient, never()).generateFollowUp(any());
+    }
+
+    @Test void enforcesTwoFollowUpsWithoutCallingAi() {
+        InterviewSession session = session(); InterviewQuestionRecord parent = record(session); parent.setId(100L); parent.setAnswerText("A sufficiently detailed saved answer.");
+        InterviewQuestionRecord first = adaptive(session, 201L, 100L, 2); InterviewQuestionRecord second = adaptive(session, 202L, 100L, 3);
+        when(sessions.findByIdAndUserId(20L, 1L)).thenReturn(Optional.of(session));
+        when(questions.findByIdAndSessionId(100L, 20L)).thenReturn(Optional.of(parent));
+        when(questions.findBySessionIdOrderByQuestionOrder(20L)).thenReturn(List.of(parent, first, second));
+        FollowUpGenerationDto result = service.generateFollowUpQuestion(20L, 100L);
+        assertFalse(result.created()); assertTrue(result.reason().contains("Maximum")); verify(aiClient, never()).generateFollowUp(any());
+    }
+
+    @Test void noFollowUpDecisionDoesNotPersistQuestion() {
+        InterviewSession session = session(); InterviewQuestionRecord parent = record(session); parent.setId(100L); parent.setAnswerText("A complete and sufficiently detailed answer.");
+        when(sessions.findByIdAndUserId(20L, 1L)).thenReturn(Optional.of(session));
+        when(questions.findByIdAndSessionId(100L, 20L)).thenReturn(Optional.of(parent));
+        when(questions.findBySessionIdOrderByQuestionOrder(20L)).thenReturn(List.of(parent));
+        when(aiClient.generateFollowUp(any())).thenReturn(new AiFollowUpResponse(false, null, "No useful follow-up needed.", null));
+        FollowUpGenerationDto result = service.generateFollowUpQuestion(20L, 100L);
+        assertFalse(result.created()); verify(questions, never()).save(argThat(value -> Boolean.TRUE.equals(value.getAdaptive())));
+    }
+
     private InterviewSession session() {
         InterviewSession value = new InterviewSession(user, resume, InterviewType.MIXED, InterviewDifficulty.MEDIUM, 1, "[]");
         value.setId(20L); value.setStatus(InterviewSessionStatus.IN_PROGRESS); value.setCreatedAt(LocalDateTime.now()); value.setUpdatedAt(LocalDateTime.now()); return value;
     }
     private InterviewQuestionRecord record(InterviewSession session) {
         return new InterviewQuestionRecord(session, "q1", "Tell me about yourself.", "HR", null, InterviewDifficulty.MEDIUM, 1);
+    }
+    private InterviewQuestionRecord adaptive(InterviewSession session, Long id, Long parentId, int order) {
+        InterviewQuestionRecord value = new InterviewQuestionRecord(session, "adaptive-" + id, "Follow up?", "HR", null, InterviewDifficulty.MEDIUM, order);
+        value.setId(id); value.setAdaptive(true); value.setParentQuestionId(parentId); value.setFollowUpDepth(order - 1); return value;
     }
     private AiQuestionGenerationResponse generated(int count, String type, String difficulty) {
         List<AiInterviewQuestionDto> values = new ArrayList<>();

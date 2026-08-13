@@ -89,6 +89,22 @@ public class AiResumeClientImpl implements AiResumeClient {
         } catch (AiAnalysisException | AiServiceUnavailableException exception) { throw exception; }
         catch (RuntimeException exception) { throw new AiAnalysisException("AI service returned an invalid answer evaluation", exception); }
     }
+    @Override
+    public AiFollowUpResponse generateFollowUp(AiFollowUpRequest request) {
+        try {
+            AiFollowUpResponse response = restClient.post().uri("/api/interview/follow-up")
+                    .contentType(MediaType.APPLICATION_JSON).body(request).retrieve().body(AiFollowUpResponse.class);
+            if (response == null || response.shouldAskFollowup() == null)
+                throw new AiAnalysisException("AI service returned an invalid follow-up response");
+            return response;
+        } catch (ResourceAccessException exception) {
+            throw new AiServiceUnavailableException("Adaptive follow-up service is unavailable", exception);
+        } catch (RestClientResponseException exception) {
+            if (exception.getStatusCode().value() >= 500)
+                throw new AiServiceUnavailableException("Adaptive follow-up service is unavailable", exception);
+            throw new AiAnalysisException("Adaptive follow-up could not be generated", exception);
+        }
+    }
     private Path requireFile(Path path) {
         Path normalized = path == null ? null : path.toAbsolutePath().normalize();
         if (normalized == null || !Files.isRegularFile(normalized)) throw new AiAnalysisException("Stored resume file is unavailable");

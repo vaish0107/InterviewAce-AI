@@ -16,6 +16,11 @@ public class InterviewQuestionRecord {
     @Column(name = "question_order", nullable = false) private Integer questionOrder;
     @Column(name = "answer_text", columnDefinition = "TEXT") private String answerText;
     @Column(name = "answered_at") private LocalDateTime answeredAt;
+    @Column(nullable = false, columnDefinition = "boolean default false") private Boolean adaptive = false;
+    @Column(name = "parent_question_id") private Long parentQuestionId;
+    @Column(name = "follow_up_depth", nullable = false, columnDefinition = "integer default 0") private Integer followUpDepth = 0;
+    @Column(name = "generation_reason", length = 500) private String generationReason;
+    @Column(name = "focus_area", length = 200) private String focusArea;
     public InterviewQuestionRecord() {}
     public InterviewQuestionRecord(InterviewSession session, String externalQuestionId, String questionText, String category, String skill, InterviewDifficulty difficulty, Integer questionOrder) {
         this.session = session; this.externalQuestionId = externalQuestionId; this.questionText = questionText;
@@ -31,4 +36,9 @@ public class InterviewQuestionRecord {
     public Integer getQuestionOrder() { return questionOrder; } public void setQuestionOrder(Integer value) { questionOrder = value; }
     public String getAnswerText() { return answerText; } public void setAnswerText(String value) { answerText = value; }
     public LocalDateTime getAnsweredAt() { return answeredAt; } public void setAnsweredAt(LocalDateTime value) { answeredAt = value; }
+    public Boolean getAdaptive() { return adaptive; } public void setAdaptive(Boolean value) { adaptive = value; }
+    public Long getParentQuestionId() { return parentQuestionId; } public void setParentQuestionId(Long value) { parentQuestionId = value; }
+    public Integer getFollowUpDepth() { return followUpDepth; } public void setFollowUpDepth(Integer value) { followUpDepth = value; }
+    public String getGenerationReason() { return generationReason; } public void setGenerationReason(String value) { generationReason = value; }
+    public String getFocusArea() { return focusArea; } public void setFocusArea(String value) { focusArea = value; }
 }

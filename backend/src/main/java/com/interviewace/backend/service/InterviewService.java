@@ -7,4 +7,5 @@ public interface InterviewService {
     List<InterviewSessionDto> getMyInterviews();
     InterviewSessionDto submitAnswer(Long sessionId, Long questionId, SubmitAnswerRequest request);
     InterviewSessionDto completeInterview(Long sessionId);
+    FollowUpGenerationDto generateFollowUpQuestion(Long sessionId, Long questionId);
 }

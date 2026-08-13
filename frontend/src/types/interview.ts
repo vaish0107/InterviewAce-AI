@@ -12,6 +12,10 @@ export interface InterviewQuestion {
   questionOrder: number
   answerText: string | null
   answeredAt: string | null
+  adaptive: boolean
+  parentQuestionId: number | null
+  followUpDepth: number
+  focusArea: string | null
 }
 
 export interface InterviewSession {
@@ -39,6 +43,7 @@ export interface CreateInterviewRequest {
 }
 
 export interface SubmitAnswerRequest { answer: string }
+export interface FollowUpGeneration { created: boolean; question: InterviewQuestion | null; reason: string }
 
 export type EvaluationStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED'
 export interface InterviewAnswerEvaluation {

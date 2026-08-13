@@ -68,6 +68,17 @@ Questions can be read aloud with browser text-to-speech, including an optional s
 
 Speech recognition availability depends on browser support and may depend on the browser vendor's speech service. Unsupported browsers offer a direct switch back to the text interview.
 
+## Adaptive Follow-up Interviews
+
+After saving either a text answer or a voice transcript, the candidate can explicitly request an AI follow-up:
+
+```text
+Deterministic base question → saved answer → Gemini follow-up decision
+→ optional persisted follow-up → existing answer evaluation → next base question
+```
+
+Follow-ups are grounded only in the current question and answer plus at most three recent answered questions. InterviewAce does not fabricate experience, and allows at most two adaptive follow-ups per base question. Adaptive generation is optional: a provider failure never prevents answering, navigating, evaluating existing answers, or completing the interview.
+
 ## Planned Features
 - Resume upload and parsing
 - Skills extraction and analysis

@@ -42,8 +42,8 @@ public class InterviewAnalyticsServiceImpl implements InterviewAnalyticsService 
         Map<String, Double> categoryScores = groupedAverages(completed, false);
         Map<String, Double> skillScores = groupedAverages(completed, true);
         return new InterviewSummaryDto(session.getId(), session.getInterviewType().name(), session.getDifficulty().name(),
-                session.getStatus().name(), session.getTotalQuestions(), answered, completed.size(),
-                Math.max(0, session.getTotalQuestions() - answered), average(completed, InterviewAnswerEvaluation::getOverallScore),
+                session.getStatus().name(), records.size(), answered, completed.size(),
+                Math.max(0, records.size() - answered), average(completed, InterviewAnswerEvaluation::getOverallScore),
                 average(completed, InterviewAnswerEvaluation::getRelevanceScore),
                 average(completed, InterviewAnswerEvaluation::getCorrectnessScore),
                 average(completed, InterviewAnswerEvaluation::getCompletenessScore),

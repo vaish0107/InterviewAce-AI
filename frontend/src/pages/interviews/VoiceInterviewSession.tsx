@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { FiArrowLeft, FiCheck, FiChevronLeft, FiChevronRight, FiVolume2, FiVolumeX } from 'react-icons/fi'
+import { FiArrowLeft, FiCheck, FiChevronLeft, FiChevronRight, FiCpu, FiVolume2, FiVolumeX } from 'react-icons/fi'
 import type { InterviewAnswerEvaluation, InterviewSession } from '../../types/interview'
 import { interviewService } from '../../services/interviewService'
 import { getApiErrorMessage } from '../../utils/getApiErrorMessage'
@@ -29,6 +29,8 @@ export function VoiceInterviewSession() {
   const [evaluation, setEvaluation] = useState<InterviewAnswerEvaluation | null>(null)
   const [evaluationLoading, setEvaluationLoading] = useState(false)
   const [evaluating, setEvaluating] = useState(false)
+  const [generatingFollowUp, setGeneratingFollowUp] = useState(false)
+  const [followUpMessage, setFollowUpMessage] = useState('')
   const [autoRead, setAutoRead] = useState(() => localStorage.getItem('interviewace:autoReadQuestions') !== 'false')
   const autoReadQuestionRef = useRef<number | null>(null)
   const recognition = useSpeechRecognition()
@@ -48,7 +50,7 @@ export function VoiceInterviewSession() {
     recognition.setTranscript(existing)
     recognition.stopListening()
     synthesis.stop()
-    setSaved(false)
+    setSaved(false); setFollowUpMessage('')
   // Hook controls are stable; changing question is the intended trigger.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [question?.id, question?.answerText])
@@ -101,6 +103,16 @@ export function VoiceInterviewSession() {
     catch (requestError) { setError(getApiErrorMessage(requestError)) }
     finally { setCompleting(false) }
   }
+  const askFollowUp = async () => {
+    if (!session || !question?.answerText?.trim()) return
+    setGeneratingFollowUp(true); setError(''); setFollowUpMessage('')
+    try {
+      const result = await interviewService.generateFollowUp(session.id, question.id)
+      if (!result.created || !result.question) setFollowUpMessage(result.reason || 'No additional follow-up is needed for this answer.')
+      else { const refreshed = await interviewService.getInterview(session.id); setSession(refreshed); setIndex(refreshed.questions.findIndex(value => value.id === result.question?.id)) }
+    } catch (requestError) { setFollowUpMessage('Follow-up could not be generated. You can continue to the next question.'); setError(getApiErrorMessage(requestError)) }
+    finally { setGeneratingFollowUp(false) }
+  }
   const moveTo = useCallback((nextIndex: number) => {
     const hasUnsavedChanges = answer.trim() !== (question?.answerText || '').trim()
     if (hasUnsavedChanges && !window.confirm('Discard the unsaved transcript and change questions?')) return
@@ -110,17 +122,19 @@ export function VoiceInterviewSession() {
 
   if (loading) return <LoadingSpinner label="Loading voice interview..." />
   if (!session || !question) return <div><Alert message={error || 'Interview session has no questions.'} /><Link to="/interviews" className="mt-4 inline-flex text-sm font-semibold text-indigo-600">Back to interviews</Link></div>
-  const progress = Math.round((session.answeredQuestions / session.totalQuestions) * 100)
+  const actualTotal = session.questions.length
+  const adaptiveTotal = session.questions.filter(value => value.adaptive).length
+  const progress = Math.round((session.answeredQuestions / actualTotal) * 100)
 
   return <div className="mx-auto max-w-4xl space-y-6">
-    <div><Link to="/interviews" className="inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 dark:text-indigo-400"><FiArrowLeft />Back to interviews</Link><div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-sm text-slate-500">Question {index + 1} of {session.totalQuestions}</p><h2 className="mt-1 text-2xl font-bold">{session.interviewType} Voice Interview</h2><p className="mt-1 text-sm text-slate-500">{session.difficulty} difficulty</p></div><p className="text-sm font-semibold">Answered {session.answeredQuestions} / {session.totalQuestions}</p></div><div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800"><div className="h-full rounded-full bg-indigo-600 transition-all" style={{ width: `${progress}%` }} /></div></div>
+    <div><Link to="/interviews" className="inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 dark:text-indigo-400"><FiArrowLeft />Back to interviews</Link><div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-sm text-slate-500">Question {index + 1} of {actualTotal} · Base questions {session.totalQuestions} · Adaptive follow-ups {adaptiveTotal}</p><h2 className="mt-1 text-2xl font-bold">{session.interviewType} Voice Interview</h2><p className="mt-1 text-sm text-slate-500">{session.difficulty} difficulty</p></div><p className="text-sm font-semibold">Answered {session.answeredQuestions} / {actualTotal}</p></div><div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800"><div className="h-full rounded-full bg-indigo-600 transition-all" style={{ width: `${progress}%` }} /></div></div>
     {error && <Alert message={error} />}{recognition.error && <Alert message={recognition.error} />}
     {!recognition.supported && <Card className="p-5"><p className="font-semibold">Voice recognition is not supported in this browser. You can continue using Text Interview mode.</p><Button className="mt-4" onClick={() => navigate(`/interviews/${session.id}`)}>Switch to Text Interview</Button></Card>}
-    <Card className="p-5 sm:p-7"><div className="flex flex-wrap items-center justify-between gap-3"><div className="flex flex-wrap gap-2"><Badge>{question.category}</Badge>{question.skill && <Badge>{question.skill}</Badge>}<Badge>{question.difficulty}</Badge></div><label className="inline-flex min-h-11 cursor-pointer items-center gap-2 text-sm font-medium"><input type="checkbox" checked={autoRead} onChange={event => setAutoReadPreference(event.target.checked)} className="size-4 accent-indigo-600" />Auto-read questions</label></div><h3 className="mt-6 text-xl font-bold leading-8">{question.questionText}</h3><div className="mt-5 flex flex-wrap gap-3"><Button variant="secondary" onClick={() => synthesis.speak(question.questionText)} aria-label="Replay current question"><FiVolume2 />Replay Question</Button>{synthesis.speaking && <Button variant="ghost" onClick={synthesis.stop} aria-label="Stop reading question"><FiVolumeX />Stop speaking</Button>}</div></Card>
+    <Card className="p-5 sm:p-7"><div className="flex flex-wrap items-center justify-between gap-3"><div className="flex flex-wrap gap-2">{question.adaptive && <Badge>ADAPTIVE FOLLOW-UP</Badge>}<Badge>{question.category}</Badge>{question.skill && <Badge>{question.skill}</Badge>}{question.focusArea && <Badge>{question.focusArea}</Badge>}<Badge>{question.difficulty}</Badge></div><label className="inline-flex min-h-11 cursor-pointer items-center gap-2 text-sm font-medium"><input type="checkbox" checked={autoRead} onChange={event => setAutoReadPreference(event.target.checked)} className="size-4 accent-indigo-600" />Auto-read questions</label></div><h3 className="mt-6 text-xl font-bold leading-8">{question.questionText}</h3><div className="mt-5 flex flex-wrap gap-3"><Button variant="secondary" onClick={() => synthesis.speak(question.questionText)} aria-label="Replay current question"><FiVolume2 />Replay Question</Button>{synthesis.speaking && <Button variant="ghost" onClick={synthesis.stop} aria-label="Stop reading question"><FiVolumeX />Stop speaking</Button>}</div></Card>
     <Card className="space-y-6 p-5 sm:p-7">
       {!readOnly && <VoiceRecorderControls listening={recognition.listening} hasTranscript={Boolean(answer.trim())} disabled={!recognition.supported} onStart={() => { synthesis.stop(); void recognition.startListening() }} onStop={recognition.stopListening} onRecordAgain={() => { recognition.clearTranscript(); setAnswer(''); setSaved(false); void recognition.startListening() }} />}
       <TranscriptEditor value={answer} interimTranscript={recognition.interimTranscript} listening={recognition.listening} readOnly={readOnly} onChange={changeAnswer} />
-      {!readOnly && <div className="flex flex-wrap items-center gap-3"><Button onClick={() => void save()} isLoading={saving} disabled={!answer.trim() || recognition.listening}><FiCheck />{saving ? 'Saving...' : 'Save Answer'}</Button>{saved && <span role="status" className="text-sm font-medium text-emerald-600">Answer saved</span>}</div>}
+      {!readOnly && <div><div className="flex flex-wrap items-center gap-3"><Button onClick={() => void save()} isLoading={saving} disabled={!answer.trim() || recognition.listening}><FiCheck />{saving ? 'Saving...' : 'Save Answer'}</Button>{question.answerText?.trim() && <Button variant="secondary" onClick={() => void askFollowUp()} isLoading={generatingFollowUp} disabled={recognition.listening}><FiCpu />Ask AI Follow-up</Button>}{saved && <span role="status" className="text-sm font-medium text-emerald-600">Answer saved</span>}</div>{followUpMessage && <p role="status" className="mt-3 text-sm text-slate-600 dark:text-slate-300">{followUpMessage}</p>}</div>}
     </Card>
     <p className="rounded-xl bg-slate-100 p-3 text-xs leading-5 text-slate-600 dark:bg-slate-800 dark:text-slate-300">Your microphone is used only while recording an answer. InterviewAce stores the transcript as your interview answer; this version does not upload or store raw microphone audio.</p>
     <AnswerEvaluationPanel evaluation={evaluation} category={question.category} hasAnswer={Boolean(question.answerText?.trim())} loading={evaluationLoading} evaluating={evaluating} onEvaluate={() => void evaluate()} />

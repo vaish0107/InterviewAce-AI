@@ -82,3 +82,25 @@ class AnswerEvaluationResponse(BaseModel):
     improved_answer: str
     summary: str
     evaluation_note: str
+
+
+class InterviewContextItem(BaseModel):
+    question: str
+    answer: str
+
+
+class FollowUpQuestionRequest(BaseModel):
+    original_question: str
+    candidate_answer: str
+    category: str
+    skill: str | None = None
+    difficulty: str
+    previous_followups: list[str] = Field(default_factory=list)
+    recent_context: list[InterviewContextItem] = Field(default_factory=list, max_length=3)
+
+
+class FollowUpQuestionResponse(BaseModel):
+    should_ask_followup: bool
+    question: str | None = None
+    reason: str
+    focus_area: str | None = None
