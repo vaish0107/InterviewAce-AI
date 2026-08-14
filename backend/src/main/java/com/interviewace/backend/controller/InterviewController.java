@@ -17,7 +17,8 @@ import java.util.List;
 public class InterviewController {
     private final InterviewService service;
     private final com.interviewace.backend.service.InterviewAnalyticsService analytics;
-    public InterviewController(InterviewService service, com.interviewace.backend.service.InterviewAnalyticsService analytics) { this.service = service; this.analytics = analytics; }
+    private final com.interviewace.backend.service.InterviewCoachingService coaching;
+    public InterviewController(InterviewService service, com.interviewace.backend.service.InterviewAnalyticsService analytics, com.interviewace.backend.service.InterviewCoachingService coaching) { this.service = service; this.analytics = analytics; this.coaching=coaching; }
     @PostMapping @Operation(summary = "Create and start an interview")
     public ResponseEntity<InterviewSessionDto> create(@Valid @RequestBody CreateInterviewRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.createInterview(request));
@@ -39,4 +40,8 @@ public class InterviewController {
     }
     @PostMapping("/{id}/complete") @Operation(summary = "Complete my interview session")
     public InterviewSessionDto complete(@PathVariable Long id) { return service.completeInterview(id); }
+    @PostMapping("/{id}/coaching") @Operation(summary="Generate and save coaching for a completed interview")
+    public InterviewCoachingReportDto generateCoaching(@PathVariable Long id){return coaching.generateCoaching(id);}
+    @GetMapping("/{id}/coaching") @Operation(summary="Get the latest saved coaching report")
+    public InterviewCoachingReportDto getCoaching(@PathVariable Long id){return coaching.getCoaching(id);}
 }

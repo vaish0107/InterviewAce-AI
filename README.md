@@ -1,5 +1,11 @@
 # InterviewAce AI
 
+## Interview replay and coaching privacy
+
+Completed interviews can be replayed from saved questions, answers, and existing evaluations. Replay never regenerates evaluation feedback automatically.
+
+Coaching generation sends the AI service only the interview type, difficulty, question text, saved answer text, category, skill, adaptive-question flag, completed rubric scores, recorded weaknesses, and recorded missing key points. It does not send credentials, email, account data, database IDs, raw audio, raw resumes, or unrelated profile data. Coaching is practice guidance only and does not predict hiring outcomes, rank candidates, or infer intelligence or personality.
+
 ## Project Overview
 InterviewAce AI is an AI-powered interview preparation platform designed to help job seekers improve their resumes, practice interviews, and build confidence before real-world interviews.
 

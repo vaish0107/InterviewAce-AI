@@ -104,3 +104,48 @@ class FollowUpQuestionResponse(BaseModel):
     question: str | None = None
     reason: str
     focus_area: str | None = None
+
+
+class CoachingAnswerItem(BaseModel):
+    question: str
+    answer: str
+    category: str
+    skill: str | None = None
+    adaptive: bool = False
+    overall_score: int | None = Field(default=None, ge=0, le=100)
+    relevance_score: int | None = Field(default=None, ge=0, le=25)
+    correctness_score: int | None = Field(default=None, ge=0, le=35)
+    completeness_score: int | None = Field(default=None, ge=0, le=25)
+    communication_score: int | None = Field(default=None, ge=0, le=15)
+    weaknesses: list[str] = Field(default_factory=list)
+    missing_key_points: list[str] = Field(default_factory=list)
+
+
+class InterviewCoachingRequest(BaseModel):
+    interview_type: str
+    difficulty: str
+    answers: list[CoachingAnswerItem] = Field(min_length=1, max_length=20)
+
+
+class CoachingFocusArea(BaseModel):
+    title: str
+    reason: str
+    priority: str
+    related_skills: list[str] = Field(default_factory=list)
+
+
+class PracticePlanItem(BaseModel):
+    order: int = Field(ge=1)
+    activity: str
+    focus: str
+    suggested_question_count: int = Field(ge=1, le=50)
+
+
+class InterviewCoachingResponse(BaseModel):
+    summary: str
+    primary_focus_areas: list[CoachingFocusArea]
+    practice_recommendations: list[str]
+    revision_topics: list[str]
+    communication_tips: list[str]
+    next_practice_plan: list[PracticePlanItem]
+    coaching_note: str

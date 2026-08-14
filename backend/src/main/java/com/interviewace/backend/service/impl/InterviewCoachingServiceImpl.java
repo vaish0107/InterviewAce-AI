@@ -1,0 +1,28 @@
+package com.interviewace.backend.service.impl;
+import com.fasterxml.jackson.core.JsonProcessingException; import com.fasterxml.jackson.core.type.TypeReference; import com.fasterxml.jackson.databind.ObjectMapper;
+import com.interviewace.backend.dto.*; import com.interviewace.backend.entity.*; import com.interviewace.backend.exception.*; import com.interviewace.backend.repository.*; import com.interviewace.backend.service.*;
+import org.springframework.stereotype.Service; import java.time.LocalDateTime; import java.util.*;
+@Service
+public class InterviewCoachingServiceImpl implements InterviewCoachingService {
+ private static final String NOTE="This coaching plan is AI-generated from your saved interview responses and evaluations. It is intended for practice guidance, not hiring assessment.";
+ private final InterviewSessionRepository sessions; private final InterviewQuestionRecordRepository questions; private final InterviewAnswerEvaluationRepository evaluations;
+ private final InterviewCoachingReportRepository reports; private final AuthenticatedUserService users; private final AiResumeClient ai; private final JsonListMapper lists; private final ObjectMapper json;
+ public InterviewCoachingServiceImpl(InterviewSessionRepository s,InterviewQuestionRecordRepository q,InterviewAnswerEvaluationRepository e,InterviewCoachingReportRepository r,AuthenticatedUserService u,AiResumeClient a,JsonListMapper l,ObjectMapper j){sessions=s;questions=q;evaluations=e;reports=r;users=u;ai=a;lists=l;json=j;}
+ public InterviewCoachingReportDto generateCoaching(Long id){
+  InterviewSession session=owned(id); if(session.getStatus()!=InterviewSessionStatus.COMPLETED) throw new InvalidResumeException("Complete the interview before generating coaching.");
+  List<InterviewQuestionRecord> ordered=questions.findBySessionIdOrderByQuestionOrder(id); Map<Long,InterviewAnswerEvaluation> completed=new HashMap<>();
+  for(var e:evaluations.findByQuestionSessionIdAndStatus(id,EvaluationStatus.COMPLETED)) completed.put(e.getQuestion().getId(),e);
+  if(completed.isEmpty()) throw new InvalidResumeException("Evaluate at least one interview answer before generating a coaching plan.");
+  List<AiCoachingAnswerItem> items=ordered.stream().filter(q->completed.containsKey(q.getId())).limit(20).map(q->{var e=completed.get(q.getId()); return new AiCoachingAnswerItem(q.getQuestionText(),q.getAnswerText(),q.getCategory(),q.getSkill(),Boolean.TRUE.equals(q.getAdaptive()),e.getOverallScore(),e.getRelevanceScore(),e.getCorrectnessScore(),e.getCompletenessScore(),e.getCommunicationScore(),lists.deserialize(e.getWeaknesses()),lists.deserialize(e.getMissingKeyPoints()));}).toList();
+  InterviewCoachingReport report=reports.findTopBySessionIdOrderByCreatedAtDesc(id).orElseGet(()->new InterviewCoachingReport(session)); report.setStatus(CoachingStatus.PROCESSING);report.setFailureMessage(null);reports.saveAndFlush(report);
+  try { var response=ai.generateInterviewCoaching(new AiInterviewCoachingRequest(session.getInterviewType().name(),session.getDifficulty().name(),items)); validate(response);
+   report.setSummary(response.summary()); report.setPrimaryFocusAreas(write(response.primaryFocusAreas()));report.setPracticeRecommendations(write(response.practiceRecommendations()));report.setRevisionTopics(write(response.revisionTopics()));report.setCommunicationTips(write(response.communicationTips()));report.setNextPracticePlan(write(response.nextPracticePlan()));report.setCoachingNote(NOTE);report.setStatus(CoachingStatus.COMPLETED);report.setGeneratedAt(LocalDateTime.now()); return dto(reports.saveAndFlush(report));
+  } catch(RuntimeException ex){report.setStatus(CoachingStatus.FAILED);report.setFailureMessage(ex instanceof AiServiceUnavailableException?"Coaching plan could not be generated.":ex.getMessage());reports.saveAndFlush(report);throw ex;}
+ }
+ public InterviewCoachingReportDto getCoaching(Long id){owned(id);return reports.findTopBySessionIdOrderByCreatedAtDesc(id).map(this::dto).orElseThrow(()->new ResourceNotFoundException("Coaching report not found"));}
+ private InterviewSession owned(Long id){return sessions.findByIdAndUserId(id,users.getAuthenticatedUser().getId()).orElseThrow(()->new ResourceNotFoundException("Interview session not found"));}
+ private void validate(AiInterviewCoachingResponse r){if(r==null||blank(r.summary())||r.primaryFocusAreas()==null||r.practiceRecommendations()==null||r.revisionTopics()==null||r.communicationTips()==null||r.nextPracticePlan()==null)throw new AiAnalysisException("AI service returned invalid coaching");}
+ private boolean blank(String s){return s==null||s.isBlank();} private String write(Object value){try{return json.writeValueAsString(value);}catch(JsonProcessingException ex){throw new AiAnalysisException("Coaching report could not be stored",ex);}}
+ private <T> List<T> read(String value,TypeReference<List<T>> type){if(value==null)return List.of();try{return json.readValue(value,type);}catch(JsonProcessingException ex){throw new AiAnalysisException("Stored coaching report is invalid",ex);}}
+ private InterviewCoachingReportDto dto(InterviewCoachingReport r){return new InterviewCoachingReportDto(r.getId(),r.getSession().getId(),r.getSummary(),read(r.getPrimaryFocusAreas(),new TypeReference<>(){}),read(r.getPracticeRecommendations(),new TypeReference<>(){}),read(r.getRevisionTopics(),new TypeReference<>(){}),read(r.getCommunicationTips(),new TypeReference<>(){}),read(r.getNextPracticePlan(),new TypeReference<>(){}),r.getCoachingNote(),r.getStatus(),r.getFailureMessage(),r.getGeneratedAt(),r.getCreatedAt(),r.getUpdatedAt());}
+}

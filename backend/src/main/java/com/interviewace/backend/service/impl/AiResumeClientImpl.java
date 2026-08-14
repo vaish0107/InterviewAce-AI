@@ -105,6 +105,14 @@ public class AiResumeClientImpl implements AiResumeClient {
             throw new AiAnalysisException("Adaptive follow-up could not be generated", exception);
         }
     }
+    @Override public AiInterviewCoachingResponse generateInterviewCoaching(AiInterviewCoachingRequest request) {
+        try {
+            AiInterviewCoachingResponse response=restClient.post().uri("/api/interview/coaching").contentType(MediaType.APPLICATION_JSON)
+                    .body(request).retrieve().body(AiInterviewCoachingResponse.class);
+            if(response==null) throw new AiAnalysisException("AI service returned invalid coaching"); return response;
+        } catch(ResourceAccessException ex){throw new AiServiceUnavailableException("AI coaching service is unavailable",ex);}
+        catch(RestClientResponseException ex){if(ex.getStatusCode().is5xxServerError()) throw new AiServiceUnavailableException("AI coaching service is unavailable",ex); throw new AiAnalysisException("AI coaching could not be generated",ex);}
+    }
     private Path requireFile(Path path) {
         Path normalized = path == null ? null : path.toAbsolutePath().normalize();
         if (normalized == null || !Files.isRegularFile(normalized)) throw new AiAnalysisException("Stored resume file is unavailable");

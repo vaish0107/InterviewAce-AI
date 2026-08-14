@@ -13,6 +13,8 @@ import { InterviewPractice } from './pages/interviews/InterviewPractice'
 import { InterviewSession } from './pages/interviews/InterviewSession'
 import { VoiceInterviewSession } from './pages/interviews/VoiceInterviewSession'
 import { InterviewHistory } from './pages/interviews/InterviewHistory'
+import { InterviewReplay } from './pages/interviews/InterviewReplay'
+import { InterviewCoaching } from './pages/interviews/InterviewCoaching'
 import { NotFound } from './pages/NotFound'
 
 function HomeRedirect() {
@@ -36,6 +38,8 @@ export default function App() {
         <Route path="/interviews" element={<InterviewPractice />} />
         <Route path="/interviews/:id" element={<InterviewSession />} />
         <Route path="/interviews/:id/voice" element={<VoiceInterviewSession />} />
+        <Route path="/interviews/:id/replay" element={<InterviewReplay />} />
+        <Route path="/interviews/:id/coaching" element={<InterviewCoaching />} />
         <Route path="/history" element={<InterviewHistory />} />
       </Route>
     </Route>
