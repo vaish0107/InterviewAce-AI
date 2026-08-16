@@ -14,11 +14,14 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
 @Service
 public class AiResumeClientImpl implements AiResumeClient {
+    private static final Logger log = LoggerFactory.getLogger(AiResumeClientImpl.class);
     private final RestClient restClient;
     public AiResumeClientImpl(RestClient.Builder builder,
             @Value("${app.ai.base-url}") String baseUrl,
@@ -112,6 +115,29 @@ public class AiResumeClientImpl implements AiResumeClient {
             if(response==null) throw new AiAnalysisException("AI service returned invalid coaching"); return response;
         } catch(ResourceAccessException ex){throw new AiServiceUnavailableException("AI coaching service is unavailable",ex);}
         catch(RestClientResponseException ex){if(ex.getStatusCode().is5xxServerError()) throw new AiServiceUnavailableException("AI coaching service is unavailable",ex); throw new AiAnalysisException("AI coaching could not be generated",ex);}
+    }
+    @Override public AiTargetedPracticeResponse generateTargetedPracticeQuestions(AiTargetedPracticeRequest request) {
+        try {
+            AiTargetedPracticeResponse response=restClient.post().uri("/api/interview/targeted-practice/questions").contentType(MediaType.APPLICATION_JSON).body(request).retrieve().body(AiTargetedPracticeResponse.class);
+            if(response==null) {
+                log.error("FastAPI targeted-practice response mapping produced a null response");
+                throw new AiAnalysisException("AI service returned invalid targeted practice questions");
+            }
+            return response;
+        } catch(ResourceAccessException ex){
+            log.error("FastAPI targeted-practice request failed before receiving a response: {}", ex.getMessage(), ex);
+            throw new AiServiceUnavailableException("Targeted practice generation is unavailable",ex);
+        } catch(RestClientResponseException ex){
+            log.error("FastAPI targeted-practice returned non-success status: status={}, message={}",
+                    ex.getStatusCode().value(), ex.getMessage(), ex);
+            if(ex.getStatusCode().is5xxServerError()) throw new AiServiceUnavailableException("Targeted practice generation is unavailable",ex);
+            throw new AiAnalysisException("Targeted practice questions could not be generated",ex);
+        } catch(AiAnalysisException ex) {
+            throw ex;
+        } catch(RuntimeException ex) {
+            log.error("FastAPI targeted-practice response mapping failed: {}", ex.getMessage(), ex);
+            throw ex;
+        }
     }
     private Path requireFile(Path path) {
         Path normalized = path == null ? null : path.toAbsolutePath().normalize();

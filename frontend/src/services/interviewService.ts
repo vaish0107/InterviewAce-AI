@@ -1,8 +1,10 @@
 import { api } from './api'
-import type { CreateInterviewRequest, FollowUpGeneration, InterviewAnswerEvaluation, InterviewSession, SubmitAnswerRequest } from '../types/interview'
+import type { CreateInterviewRequest, CreateTargetedPracticeRequest, FollowUpGeneration, InterviewAnswerEvaluation, InterviewSession, SubmitAnswerRequest, TargetedPracticeSummary } from '../types/interview'
 
 export const interviewService = {
   async createInterview(request: CreateInterviewRequest) { return (await api.post<InterviewSession>('/interviews', request)).data },
+  async createTargetedPractice(request: CreateTargetedPracticeRequest) { return (await api.post<InterviewSession>('/interviews/targeted-practice', request)).data },
+  async getTargetedSummary(id: number) { return (await api.get<TargetedPracticeSummary>(`/interviews/${id}/targeted-summary`)).data },
   async getInterviews() { return (await api.get<InterviewSession[]>('/interviews')).data },
   async getInterview(id: number) { return (await api.get<InterviewSession>(`/interviews/${id}`)).data },
   async submitAnswer(sessionId: number, questionId: number, answer: string) {

@@ -6,12 +6,21 @@ from app.services.followup_generator import FollowUpConfigurationError, FollowUp
 from app.services.question_generator import QuestionGenerator
 from app.models.interview import InterviewCoachingRequest, InterviewCoachingResponse
 from app.services.coaching_generator import CoachingConfigurationError, CoachingGenerator, CoachingOutputError, CoachingUnavailableError
+from app.models.interview import TargetedPracticeRequest, TargetedPracticeResponse
+from app.services.targeted_practice_generator import TargetedPracticeConfigurationError, TargetedPracticeGenerator, TargetedPracticeOutputError, TargetedPracticeUnavailableError
 
 router = APIRouter(prefix="/api/interview", tags=["Interview Practice"])
 generator = QuestionGenerator()
 evaluator = AnswerEvaluator()
 followup_generator = FollowUpGenerator()
 coaching_generator = CoachingGenerator()
+targeted_generator = TargetedPracticeGenerator()
+
+@router.post("/targeted-practice/questions", response_model=TargetedPracticeResponse, summary="Generate focused weakness-practice questions")
+def generate_targeted_questions(request: TargetedPracticeRequest) -> TargetedPracticeResponse:
+    try: return targeted_generator.generate(request)
+    except (TargetedPracticeConfigurationError, TargetedPracticeUnavailableError) as error: raise HTTPException(status_code=503, detail=str(error)) from error
+    except TargetedPracticeOutputError as error: raise HTTPException(status_code=502, detail=str(error)) from error
 
 
 @router.post("/questions", response_model=QuestionGenerationResponse, summary="Generate deterministic interview questions")

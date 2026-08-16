@@ -45,6 +45,27 @@ class InterviewEvaluationServiceImplTests {
         verify(evaluations, times(2)).saveAndFlush(any());
     }
 
+    @Test void sendsCompleteNormalEvaluationContract() {
+        when(evaluations.findByQuestionId(100L)).thenReturn(Optional.empty()); when(aiClient.evaluateInterviewAnswer(any())).thenReturn(valid());
+        service.evaluateAnswer(20L, 100L);
+        ArgumentCaptor<AiAnswerEvaluationRequest> captor=ArgumentCaptor.forClass(AiAnswerEvaluationRequest.class);
+        verify(aiClient).evaluateInterviewAnswer(captor.capture()); AiAnswerEvaluationRequest request=captor.getValue();
+        assertEquals(question.getQuestionText(),request.question()); assertEquals(question.getAnswerText(),request.answer()); assertEquals("HR",request.category()); assertNull(request.skill()); assertEquals("MEDIUM",request.difficulty());
+    }
+
+    @Test void normalizesLegacyTargetedCategoryBeforeEvaluation() {
+        session.setSessionMode(InterviewSessionMode.TARGETED_PRACTICE); session.setInterviewType(InterviewType.TECHNICAL);
+        question.setCategory("TARGETED_PRACTICE"); question.setSkill(" Java ");
+        when(evaluations.findByQuestionId(100L)).thenReturn(Optional.empty()); when(aiClient.evaluateInterviewAnswer(any())).thenReturn(valid());
+        service.evaluateAnswer(20L,100L);
+        ArgumentCaptor<AiAnswerEvaluationRequest> captor=ArgumentCaptor.forClass(AiAnswerEvaluationRequest.class); verify(aiClient).evaluateInterviewAnswer(captor.capture());
+        assertEquals("TECHNICAL",captor.getValue().category()); assertEquals("Java",captor.getValue().skill()); assertEquals("MEDIUM",captor.getValue().difficulty());
+    }
+
+    @Test void rejectsTooShortAnswerBeforeCallingAi() {
+        question.setAnswerText("short"); assertThrows(InvalidResumeException.class,()->service.evaluateAnswer(20L,100L)); verifyNoInteractions(aiClient,evaluations);
+    }
+
     @Test void enforcesSessionOwnership() {
         when(sessions.findByIdAndUserId(20L, 1L)).thenReturn(Optional.empty());
         assertThrows(ResourceNotFoundException.class, () -> service.evaluateAnswer(20L, 100L)); verifyNoInteractions(aiClient, evaluations);

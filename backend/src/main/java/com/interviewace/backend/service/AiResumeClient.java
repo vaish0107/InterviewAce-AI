@@ -9,6 +9,8 @@ import com.interviewace.backend.dto.AiFollowUpRequest;
 import com.interviewace.backend.dto.AiFollowUpResponse;
 import com.interviewace.backend.dto.AiInterviewCoachingRequest;
 import com.interviewace.backend.dto.AiInterviewCoachingResponse;
+import com.interviewace.backend.dto.AiTargetedPracticeRequest;
+import com.interviewace.backend.dto.AiTargetedPracticeResponse;
 import java.nio.file.Path;
 public interface AiResumeClient {
     AiResumeAnalysisResponse analyzeResume(Path resumePath);
@@ -18,4 +20,5 @@ public interface AiResumeClient {
     AiAnswerEvaluationResponse evaluateInterviewAnswer(AiAnswerEvaluationRequest request);
     AiFollowUpResponse generateFollowUp(AiFollowUpRequest request);
     AiInterviewCoachingResponse generateInterviewCoaching(AiInterviewCoachingRequest request);
+    AiTargetedPracticeResponse generateTargetedPracticeQuestions(AiTargetedPracticeRequest request);
 }

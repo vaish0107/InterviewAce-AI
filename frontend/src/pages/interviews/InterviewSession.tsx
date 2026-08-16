@@ -1,6 +1,6 @@
 import axios from 'axios'
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { FiArrowLeft, FiCheck, FiChevronLeft, FiChevronRight, FiCpu } from 'react-icons/fi'
 import type { InterviewAnswerEvaluation, InterviewSession as InterviewSessionType } from '../../types/interview'
 import { interviewService } from '../../services/interviewService'
@@ -19,6 +19,7 @@ import { SkillPerformanceList } from '../../components/analytics/SkillPerformanc
 
 export function InterviewSession() {
   const sessionId = Number(useParams().id)
+  const navigate = useNavigate()
   const [session, setSession] = useState<InterviewSessionType | null>(null)
   const [index, setIndex] = useState(0)
   const [answer, setAnswer] = useState('')
@@ -72,7 +73,7 @@ export function InterviewSession() {
   const complete = async () => {
     if (!session || !window.confirm('Complete this interview? You will no longer be able to edit answers.')) return
     setCompleting(true); setError('')
-    try { setSession(await interviewService.completeInterview(session.id)) }
+    try { const completed = await interviewService.completeInterview(session.id); setSession(completed); if (completed.sessionMode === 'TARGETED_PRACTICE') navigate(`/interviews/${completed.id}/targeted-summary`) }
     catch (requestError) { setError(getApiErrorMessage(requestError)) }
     finally { setCompleting(false) }
   }
@@ -95,6 +96,7 @@ export function InterviewSession() {
   const adaptiveTotal = session.questions.filter(value => value.adaptive).length
   const progress = Math.round((session.answeredQuestions / actualTotal) * 100)
   return <div className="mx-auto max-w-4xl space-y-6">
+    {session.sessionMode === 'TARGETED_PRACTICE' && <Card className="p-4"><p className="text-xs font-bold uppercase tracking-wide text-indigo-600">Targeted Practice</p><p className="mt-2 font-bold">Focus: {session.targetFocusArea}</p><p className="mt-1 text-sm text-slate-500">Questions: {session.totalQuestions} · Difficulty: {session.difficulty}</p></Card>}
     <div><Link to="/interviews" className="inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 dark:text-indigo-400"><FiArrowLeft />Back to interviews</Link><div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-sm text-slate-500">Question {index + 1} of {actualTotal} · Base questions {session.totalQuestions} · Adaptive follow-ups {adaptiveTotal}</p><h2 className="mt-1 text-2xl font-bold">{session.interviewType} Interview</h2></div><p className="text-sm font-semibold">Answered {session.answeredQuestions} / {actualTotal}</p></div><div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800"><div className="h-full rounded-full bg-indigo-600 transition-all" style={{ width: `${progress}%` }} /></div></div>
     {error && <Alert message={error} />}
     <Card className="p-5 sm:p-7"><div className="flex flex-wrap gap-2">{question.adaptive && <Badge>ADAPTIVE FOLLOW-UP</Badge>}<Badge>{question.category}</Badge>{question.skill && <Badge>{question.skill}</Badge>}{question.focusArea && <Badge>{question.focusArea}</Badge>}<Badge>{question.difficulty}</Badge></div><h3 className="mt-6 text-xl font-bold leading-8">{question.questionText}</h3><label htmlFor="interview-answer" className="mt-7 block text-sm font-medium">Your answer</label><textarea id="interview-answer" value={answer} onChange={event => { setAnswer(event.target.value); setSaved(false) }} rows={9} placeholder="Write your answer here..." className="mt-2 w-full resize-y rounded-xl border border-slate-300 bg-white p-3.5 text-sm leading-6 outline-none focus:border-indigo-500 focus:ring-3 focus:ring-indigo-500/15 dark:border-slate-700 dark:bg-slate-900" /><div className="mt-4 flex flex-wrap items-center gap-3"><Button onClick={() => void save()} isLoading={saving} disabled={!answer.trim()}><FiCheck />{saving ? 'Saving...' : 'Save Answer'}</Button>{question.answerText?.trim() && <Button variant="secondary" onClick={() => void askFollowUp()} isLoading={generatingFollowUp}><FiCpu />Ask Follow-up</Button>}{saved && <span role="status" className="text-sm font-medium text-emerald-600">Answer saved</span>}</div>{followUpMessage && <p role="status" className="mt-3 text-sm text-slate-600 dark:text-slate-300">{followUpMessage}</p>}</Card>

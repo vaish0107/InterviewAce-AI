@@ -124,3 +124,21 @@ def test_endpoint_response_schema_is_preserved(monkeypatch) -> None:
     response = client.post("/api/interview/evaluate-answer", json={"question": "Explain DI.", "answer": "Dependencies are supplied to a class from outside.", "category": "TECHNICAL", "skill": "Java", "difficulty": "EASY"})
     assert response.status_code == 200
     assert set(response.json()) == set(AnswerEvaluationResponse.model_fields)
+
+@pytest.mark.parametrize("category", ["TECHNICAL", "HR"])
+def test_normal_and_targeted_contract_reach_mocked_evaluator(monkeypatch, category: str) -> None:
+    captured = []
+    class Successful:
+        def evaluate(self, request): captured.append(request); return evaluation()
+    monkeypatch.setattr(interview_api, "evaluator", Successful())
+    response = client.post("/api/interview/evaluate-answer", json={"question":"Explain the selected practice concept.","answer":"This is a sufficiently detailed saved answer.","category":category,"skill":"Java" if category == "TECHNICAL" else None,"difficulty":"MEDIUM"})
+    assert response.status_code == 200
+    assert captured[0].category == category
+    assert captured[0].difficulty == "MEDIUM"
+
+def test_422_reports_safe_field_and_reason(caplog) -> None:
+    with caplog.at_level("WARNING"):
+        response = client.post("/api/interview/evaluate-answer", json={"question":"Question","answer":"short","category":"TARGETED_PRACTICE","skill":None,"difficulty":"Medium"})
+    assert response.status_code == 422
+    assert "body.answer" in caplog.text
+    assert "body.category" in caplog.text

@@ -38,6 +38,60 @@ class QuestionGenerationResponse(BaseModel):
     total_questions: int
     questions: list[InterviewQuestion]
 
+class TargetedPracticeRequest(BaseModel):
+    focus_area: str = Field(min_length=1, max_length=200)
+    skill: str | None = Field(default=None, max_length=100)
+    difficulty: str
+    question_count: int = Field(ge=3, le=5)
+    weakness_context: str | None = Field(default=None, max_length=1000)
+    avoid_questions: list[str] = Field(default_factory=list, max_length=20)
+
+    @field_validator("focus_area")
+    @classmethod
+    def focus_not_blank(cls, value: str) -> str:
+        if not value.strip(): raise ValueError("focus_area must not be blank")
+        return value.strip()
+
+    @field_validator("difficulty")
+    @classmethod
+    def targeted_difficulty(cls, value: str) -> str:
+        normalized = value.strip().upper()
+        if normalized not in {"EASY", "MEDIUM", "HARD"}: raise ValueError("difficulty must be EASY, MEDIUM, or HARD")
+        return normalized
+
+class TargetedPracticeQuestion(BaseModel):
+    question: str = Field(min_length=1)
+    category: str
+    skill: str | None = None
+    difficulty: str
+    focus_concept: str = Field(min_length=1)
+
+    @field_validator("question", "focus_concept")
+    @classmethod
+    def targeted_text_not_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("value must not be blank")
+        return value.strip()
+
+    @field_validator("category")
+    @classmethod
+    def targeted_category(cls, value: str) -> str:
+        normalized = value.strip().upper()
+        if normalized not in {"TECHNICAL", "HR", "PROJECT"}:
+            raise ValueError("category must be TECHNICAL, HR, or PROJECT")
+        return normalized
+
+    @field_validator("difficulty")
+    @classmethod
+    def targeted_question_difficulty(cls, value: str) -> str:
+        normalized = value.strip().upper()
+        if normalized not in {"EASY", "MEDIUM", "HARD"}:
+            raise ValueError("difficulty must be EASY, MEDIUM, or HARD")
+        return normalized
+
+class TargetedPracticeResponse(BaseModel):
+    questions: list[TargetedPracticeQuestion]
+
 
 class AnswerEvaluationRequest(BaseModel):
     question: str = Field(min_length=1)

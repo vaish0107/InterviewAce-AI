@@ -1,0 +1,16 @@
+import { useState, type ReactNode } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { Button } from '../../components/common/Button'
+import { Card } from '../../components/common/Card'
+import { Alert } from '../../components/common/Alert'
+import { interviewService } from '../../services/interviewService'
+import { getApiErrorMessage } from '../../utils/getApiErrorMessage'
+import type { InterviewDifficulty } from '../../types/interview'
+type SetupState={sourceInterviewId?:number;focusArea?:string;skill?:string|null;weaknessContext?:string}
+export function TargetedPracticeSetup(){
+ const navigate=useNavigate(); const state=(useLocation().state||{}) as SetupState
+ const [focusArea,setFocusArea]=useState(state.focusArea||''); const [skill,setSkill]=useState(state.skill||''); const [difficulty,setDifficulty]=useState<InterviewDifficulty>('MEDIUM'); const [questionCount,setQuestionCount]=useState<3|5>(5); const [loading,setLoading]=useState(false); const [error,setError]=useState('')
+ const start=async()=>{if(!focusArea.trim()){setError('Choose a coaching focus area before starting practice.');return} setLoading(true);setError('');try{const session=await interviewService.createTargetedPractice({sourceInterviewId:state.sourceInterviewId??null,focusArea:focusArea.trim(),skill:skill.trim()||null,difficulty,questionCount,weaknessContext:state.weaknessContext||null});navigate(`/interviews/${session.id}`)}catch(e){setError(getApiErrorMessage(e)||'Practice questions could not be generated. Try again shortly.')}finally{setLoading(false)}}
+ return <main className="mx-auto max-w-2xl space-y-6"><div><p className="text-xs font-bold uppercase tracking-wide text-indigo-600">Targeted Practice</p><h1 className="mt-2 text-3xl font-bold">Practice a weakness area</h1><p className="mt-2 text-slate-500">Create a focused, fixed-length interview practice session.</p></div>{error&&<Alert message={error}/>}<Card className="space-y-5 p-6"><Field label="Focus Area"><input value={focusArea} onChange={e=>setFocusArea(e.target.value)} className="w-full rounded-xl border border-slate-300 bg-transparent p-3 dark:border-slate-700" /></Field><Field label="Related Skill"><input value={skill} onChange={e=>setSkill(e.target.value)} className="w-full rounded-xl border border-slate-300 bg-transparent p-3 dark:border-slate-700" /></Field><Field label="Difficulty"><select value={difficulty} onChange={e=>setDifficulty(e.target.value as InterviewDifficulty)} className="w-full rounded-xl border border-slate-300 bg-white p-3 dark:border-slate-700 dark:bg-slate-900"><option>EASY</option><option>MEDIUM</option><option>HARD</option></select></Field><fieldset><legend className="text-sm font-semibold">Questions</legend><div className="mt-2 flex gap-3">{([3,5] as const).map(count=><label key={count} className="flex items-center gap-2"><input type="radio" checked={questionCount===count} onChange={()=>setQuestionCount(count)}/>{count}</label>)}</div></fieldset><Button onClick={()=>void start()} isLoading={loading} disabled={loading||!focusArea.trim()}>Start Targeted Practice</Button></Card></main>
+}
+function Field({label,children}:{label:string;children:ReactNode}){return <label className="block"><span className="mb-2 block text-sm font-semibold">{label}</span>{children}</label>}

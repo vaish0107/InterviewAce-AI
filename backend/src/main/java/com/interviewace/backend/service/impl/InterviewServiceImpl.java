@@ -7,11 +7,15 @@ import com.interviewace.backend.repository.*;
 import com.interviewace.backend.service.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.dao.DataAccessException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.time.LocalDateTime;
 import java.util.*;
 
 @Service
 public class InterviewServiceImpl implements InterviewService {
+    private static final Logger log = LoggerFactory.getLogger(InterviewServiceImpl.class);
     private static final int MAX_FOLLOWUPS_PER_BASE_QUESTION = 2;
     private static final int RECENT_CONTEXT_LIMIT = 3;
     private final InterviewSessionRepository sessions;
@@ -54,6 +58,54 @@ public class InterviewServiceImpl implements InterviewService {
         return toDto(saved, records);
     }
 
+    @Override @Transactional
+    public InterviewSessionDto createTargetedPractice(CreateTargetedPracticeRequest request) {
+        User user=authenticatedUsers.getAuthenticatedUser();
+        if(request==null || request.focusArea()==null || request.focusArea().isBlank() || request.focusArea().trim().length()>200 || request.difficulty()==null || request.questionCount()==null || (request.questionCount()!=3 && request.questionCount()!=5))
+            throw new InvalidResumeException("Targeted practice settings are invalid");
+        InterviewSession source=null;
+        if(request.sourceInterviewId()!=null) source=sessions.findByIdAndUserId(request.sourceInterviewId(),user.getId()).orElseThrow(()->new ResourceNotFoundException("Source interview not found"));
+        String focus=request.focusArea().trim(); String skill=request.skill()==null||request.skill().isBlank()?null:request.skill().trim();
+        log.info("Generating targeted-practice questions: focusArea={}, skill={}, difficulty={}, questionCount={}",
+                focus, skill, request.difficulty(), request.questionCount());
+        AiTargetedPracticeResponse generated=aiClient.generateTargetedPracticeQuestions(new AiTargetedPracticeRequest(focus,skill,request.difficulty().name(),request.questionCount(),request.weaknessContext(),List.of()));
+        if(generated==null || generated.questions()==null || generated.questions().size()!=request.questionCount()) throw new AiAnalysisException("AI service returned invalid targeted practice questions");
+        Set<String> unique=new HashSet<>();
+        for(AiTargetedPracticeQuestion item:generated.questions()) if(item==null||item.question()==null||item.question().isBlank()||item.category()==null||!Set.of("TECHNICAL","HR","PROJECT").contains(item.category().trim().toUpperCase(Locale.ROOT))||item.difficulty()==null||!item.difficulty().equals(request.difficulty().name())||!unique.add(item.question().trim().toLowerCase(Locale.ROOT))) throw new AiAnalysisException("AI service returned invalid targeted practice questions");
+        InterviewSession session=new InterviewSession(user,null,InterviewType.TECHNICAL,request.difficulty(),request.questionCount(),lists.serialize(skill==null?List.of():List.of(skill)));
+        session.setSessionMode(InterviewSessionMode.TARGETED_PRACTICE); session.setTargetFocusArea(focus); session.setTargetSkill(skill); session.setSourceInterviewId(source==null?null:source.getId()); session.setStatus(InterviewSessionStatus.IN_PROGRESS); session.setStartedAt(LocalDateTime.now());
+        InterviewSession saved;
+        try {
+            saved = sessions.saveAndFlush(session);
+        } catch (DataAccessException exception) {
+            log.error("Targeted-practice session persistence failed", exception);
+            throw exception;
+        }
+        List<InterviewQuestionRecord> records=new ArrayList<>();
+        for(int i=0;i<generated.questions().size();i++){AiTargetedPracticeQuestion item=generated.questions().get(i); InterviewQuestionRecord record=new InterviewQuestionRecord(saved,"targeted-"+UUID.randomUUID(),item.question().trim(),item.category().trim().toUpperCase(Locale.ROOT),item.skill()==null?skill:item.skill(),request.difficulty(),i+1); record.setFocusArea(item.focusConcept()==null?focus:item.focusConcept()); records.add(record);}
+        try {
+            questions.saveAll(records);
+        } catch (DataAccessException exception) {
+            log.error("Targeted-practice question persistence failed: sessionId={}, questionCount={}",
+                    saved.getId(), records.size(), exception);
+            throw exception;
+        }
+        return toDto(saved,records);
+    }
+
+    @Override @Transactional(readOnly=true)
+    public TargetedPracticeSummaryDto getTargetedPracticeSummary(Long sessionId){
+        InterviewSession session=ownedSession(sessionId); if(session.getSessionMode()!=InterviewSessionMode.TARGETED_PRACTICE) throw new InvalidResumeException("Targeted summary is only available for targeted practice sessions");
+        List<InterviewQuestionRecord> records=questions.findBySessionIdOrderByQuestionOrder(sessionId); List<InterviewAnswerEvaluation> current=evaluations.findByQuestionSessionIdAndStatus(sessionId,EvaluationStatus.COMPLETED);
+        List<InterviewAnswerEvaluation> baseline=List.of();
+        if(session.getSourceInterviewId()!=null){InterviewSession source=sessions.findByIdAndUserId(session.getSourceInterviewId(),session.getUser().getId()).orElse(null); if(source!=null){String key=session.getTargetSkill()!=null?session.getTargetSkill():session.getTargetFocusArea(); baseline=evaluations.findByQuestionSessionIdAndStatus(source.getId(),EvaluationStatus.COMPLETED).stream().filter(e->matchesFocus(e.getQuestion(),key)).toList();}}
+        Double avg=average(current.stream().map(InterviewAnswerEvaluation::getOverallScore).toList()); Double base=average(baseline.stream().map(InterviewAnswerEvaluation::getOverallScore).toList());
+        return new TargetedPracticeSummaryDto(sessionId,session.getTargetFocusArea(),session.getTargetSkill(),session.getTotalQuestions(),(int)records.stream().filter(q->q.getAnswerText()!=null&&!q.getAnswerText().isBlank()).count(),current.size(),avg,base,avg!=null&&base!=null?Math.round((avg-base)*100.0)/100.0:null,rubrics(current),base==null?null:rubrics(baseline),session.getSourceInterviewId());
+    }
+    private boolean matchesFocus(InterviewQuestionRecord q,String key){if(key==null)return false; return (q.getSkill()!=null&&q.getSkill().equalsIgnoreCase(key))||(q.getFocusArea()!=null&&q.getFocusArea().equalsIgnoreCase(key))||(q.getCategory()!=null&&q.getCategory().equalsIgnoreCase(key));}
+    private Double average(List<Integer> values){List<Integer> valid=values.stream().filter(Objects::nonNull).toList(); return valid.isEmpty()?null:Math.round(valid.stream().mapToInt(Integer::intValue).average().orElse(0)*100.0)/100.0;}
+    private RubricAveragesDto rubrics(List<InterviewAnswerEvaluation> values){return new RubricAveragesDto(average(values.stream().map(InterviewAnswerEvaluation::getRelevanceScore).toList()),average(values.stream().map(InterviewAnswerEvaluation::getCorrectnessScore).toList()),average(values.stream().map(InterviewAnswerEvaluation::getCompletenessScore).toList()),average(values.stream().map(InterviewAnswerEvaluation::getCommunicationScore).toList()));}
+
     @Override @Transactional(readOnly = true)
     public InterviewSessionDto getInterview(Long id) {
         InterviewSession session = ownedSession(id);
@@ -93,6 +145,7 @@ public class InterviewServiceImpl implements InterviewService {
     @Override @Transactional
     public FollowUpGenerationDto generateFollowUpQuestion(Long sessionId, Long questionId) {
         InterviewSession session = ownedSession(sessionId);
+        if(session.getSessionMode()==InterviewSessionMode.TARGETED_PRACTICE) throw new InvalidResumeException("Adaptive follow-ups are disabled for targeted practice");
         if (session.getStatus() == InterviewSessionStatus.COMPLETED || session.getStatus() == InterviewSessionStatus.ABANDONED)
             throw new InvalidResumeException("This interview session no longer accepts follow-ups");
         InterviewQuestionRecord current = questions.findByIdAndSessionId(questionId, session.getId())
@@ -184,7 +237,8 @@ public class InterviewServiceImpl implements InterviewService {
         return new InterviewSessionDto(session.getId(), resume == null ? null : resume.getId(),
                 resume == null ? null : resume.getOriginalFileName(), session.getInterviewType(), session.getDifficulty(),
                 session.getTotalQuestions(), lists.deserialize(session.getDetectedSkills()), session.getStatus(), answered,
-                session.getStartedAt(), session.getCompletedAt(), session.getCreatedAt(), session.getUpdatedAt(), questionDtos);
+                session.getStartedAt(), session.getCompletedAt(), session.getCreatedAt(), session.getUpdatedAt(), questionDtos,
+                session.getSessionMode(), session.getTargetSkill(), session.getTargetFocusArea(), session.getSourceInterviewId());
     }
 
     private InterviewQuestionDto toQuestionDto(InterviewQuestionRecord value) {

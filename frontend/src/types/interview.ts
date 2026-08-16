@@ -1,6 +1,7 @@
 export type InterviewType = 'TECHNICAL' | 'HR' | 'MIXED'
 export type InterviewDifficulty = 'EASY' | 'MEDIUM' | 'HARD'
 export type InterviewStatus = 'CREATED' | 'IN_PROGRESS' | 'COMPLETED' | 'ABANDONED'
+export type InterviewSessionMode = 'STANDARD' | 'TARGETED_PRACTICE'
 
 export interface InterviewQuestion {
   id: number
@@ -33,6 +34,10 @@ export interface InterviewSession {
   createdAt: string
   updatedAt: string
   questions: InterviewQuestion[]
+  sessionMode: InterviewSessionMode
+  targetSkill: string | null
+  targetFocusArea: string | null
+  sourceInterviewId: number | null
 }
 
 export interface CreateInterviewRequest {
@@ -43,6 +48,9 @@ export interface CreateInterviewRequest {
 }
 
 export interface SubmitAnswerRequest { answer: string }
+export interface CreateTargetedPracticeRequest { sourceInterviewId: number | null; focusArea: string; skill: string | null; difficulty: InterviewDifficulty; questionCount: 3 | 5; weaknessContext?: string | null }
+export interface RubricAverages { relevance: number | null; correctness: number | null; completeness: number | null; communication: number | null }
+export interface TargetedPracticeSummary { sessionId: number; focusArea: string; skill: string | null; questionCount: number; answeredCount: number; evaluatedCount: number; averageScore: number | null; baselineScore: number | null; scoreChange: number | null; rubricAverages: RubricAverages; baselineRubricAverages: RubricAverages | null; sourceInterviewId: number | null }
 export interface FollowUpGeneration { created: boolean; question: InterviewQuestion | null; reason: string }
 
 export type EvaluationStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED'

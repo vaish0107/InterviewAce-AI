@@ -15,6 +15,8 @@ import { VoiceInterviewSession } from './pages/interviews/VoiceInterviewSession'
 import { InterviewHistory } from './pages/interviews/InterviewHistory'
 import { InterviewReplay } from './pages/interviews/InterviewReplay'
 import { InterviewCoaching } from './pages/interviews/InterviewCoaching'
+import { TargetedPracticeSetup } from './pages/interviews/TargetedPracticeSetup'
+import { TargetedPracticeSummaryPage } from './pages/interviews/TargetedPracticeSummaryPage'
 import { NotFound } from './pages/NotFound'
 
 function HomeRedirect() {
@@ -36,6 +38,8 @@ export default function App() {
         <Route path="/resume-analysis" element={<Navigate to="/resumes" replace />} />
         <Route path="/job-match" element={<JobMatch />} />
         <Route path="/interviews" element={<InterviewPractice />} />
+        <Route path="/practice/targeted" element={<TargetedPracticeSetup />} />
+        <Route path="/interviews/:id/targeted-summary" element={<TargetedPracticeSummaryPage />} />
         <Route path="/interviews/:id" element={<InterviewSession />} />
         <Route path="/interviews/:id/voice" element={<VoiceInterviewSession />} />
         <Route path="/interviews/:id/replay" element={<InterviewReplay />} />

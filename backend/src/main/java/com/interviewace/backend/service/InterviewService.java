@@ -8,4 +8,6 @@ public interface InterviewService {
     InterviewSessionDto submitAnswer(Long sessionId, Long questionId, SubmitAnswerRequest request);
     InterviewSessionDto completeInterview(Long sessionId);
     FollowUpGenerationDto generateFollowUpQuestion(Long sessionId, Long questionId);
+    InterviewSessionDto createTargetedPractice(CreateTargetedPracticeRequest request);
+    TargetedPracticeSummaryDto getTargetedPracticeSummary(Long sessionId);
 }

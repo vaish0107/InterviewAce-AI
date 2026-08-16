@@ -7,12 +7,15 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
     @ExceptionHandler(MethodArgumentNotValidException.class)
     ResponseEntity<ApiErrorResponse> validation(MethodArgumentNotValidException ex, HttpServletRequest request) {
         Map<String, String> fields = new LinkedHashMap<>(); ex.getBindingResult().getFieldErrors().forEach(error -> fields.putIfAbsent(error.getField(), error.getDefaultMessage()));
@@ -27,7 +30,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AiAnalysisException.class) ResponseEntity<ApiErrorResponse> aiAnalysis(AiAnalysisException ex, HttpServletRequest req) { return error(HttpStatus.BAD_GATEWAY, ex.getMessage(), req, null); }
     @ExceptionHandler(BadCredentialsException.class) ResponseEntity<ApiErrorResponse> credentials(BadCredentialsException ex, HttpServletRequest req) { return error(HttpStatus.UNAUTHORIZED, "Invalid email or password", req, null); }
     @ExceptionHandler(AccessDeniedException.class) ResponseEntity<ApiErrorResponse> forbidden(AccessDeniedException ex, HttpServletRequest req) { return error(HttpStatus.FORBIDDEN, "Access denied", req, null); }
-    @ExceptionHandler(Exception.class) ResponseEntity<ApiErrorResponse> generic(Exception ex, HttpServletRequest req) { return error(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred", req, null); }
+    @ExceptionHandler(Exception.class)
+    ResponseEntity<ApiErrorResponse> generic(Exception ex, HttpServletRequest req) {
+        log.error("Unhandled backend exception: {}", ex.getMessage(), ex);
+        return error(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred", req, null);
+    }
     private ResponseEntity<ApiErrorResponse> error(HttpStatus status, String message, HttpServletRequest req, Map<String, String> fields) {
         return ResponseEntity.status(status).body(new ApiErrorResponse(Instant.now(), status.value(), status.getReasonPhrase(), message, req.getRequestURI(), fields));
     }

@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 
 @Service
 public class InterviewEvaluationServiceImpl implements InterviewEvaluationService {
+    private static final java.util.Set<String> VALID_CATEGORIES = java.util.Set.of("TECHNICAL", "HR", "PROJECT");
     private final InterviewSessionRepository sessions;
     private final InterviewQuestionRecordRepository questions;
     private final InterviewAnswerEvaluationRepository evaluations;
@@ -28,12 +29,14 @@ public class InterviewEvaluationServiceImpl implements InterviewEvaluationServic
         InterviewQuestionRecord question = ownedQuestion(sessionId, questionId);
         if (question.getAnswerText() == null || question.getAnswerText().isBlank())
             throw new InvalidResumeException("Save an answer before requesting evaluation");
+        if (question.getAnswerText().trim().length() < 10)
+            throw new InvalidResumeException("Answer must contain at least 10 characters before evaluation");
         InterviewAnswerEvaluation evaluation = evaluations.findByQuestionId(questionId)
                 .orElseGet(() -> new InterviewAnswerEvaluation(question, EvaluationStatus.PROCESSING));
         evaluation.setStatus(EvaluationStatus.PROCESSING); evaluation.setFailureMessage(null); evaluations.saveAndFlush(evaluation);
         try {
             AiAnswerEvaluationResponse response = aiClient.evaluateInterviewAnswer(new AiAnswerEvaluationRequest(
-                    question.getQuestionText(), question.getAnswerText(), question.getCategory(), question.getSkill(),
+                    question.getQuestionText().trim(), question.getAnswerText().trim(), evaluationCategory(question), normalizeSkill(question.getSkill()),
                     question.getDifficulty().name()));
             validate(response);
             evaluation.setOverallScore(response.overallScore()); evaluation.setRelevanceScore(response.relevanceScore());
@@ -80,6 +83,14 @@ public class InterviewEvaluationServiceImpl implements InterviewEvaluationServic
     }
 
     private boolean inRange(Integer value, int maximum) { return value != null && value >= 0 && value <= maximum; }
+    private String evaluationCategory(InterviewQuestionRecord question) {
+        String category = question.getCategory() == null ? "" : question.getCategory().trim().toUpperCase(java.util.Locale.ROOT);
+        if (VALID_CATEGORIES.contains(category)) return category;
+        if (question.getSession().getSessionMode() == InterviewSessionMode.TARGETED_PRACTICE)
+            return question.getSession().getInterviewType() == InterviewType.HR ? "HR" : "TECHNICAL";
+        throw new AiAnalysisException("Interview question has an invalid evaluation category");
+    }
+    private String normalizeSkill(String skill) { return skill == null || skill.isBlank() ? null : skill.trim(); }
     private String safeMessage(RuntimeException exception) {
         if (exception instanceof AiServiceUnavailableException) return "AI answer evaluation service is unavailable";
         if (exception instanceof AiAnalysisException) return exception.getMessage();
