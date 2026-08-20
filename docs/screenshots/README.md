@@ -1,16 +1,15 @@
-# Screenshot Checklist
+# Application Screenshots
 
-Add real application screenshots to this directory before linking or embedding them in the root README. Do not include credentials, API keys, JWTs, private resume details, or other personal data in captured images.
+This directory contains the real application screenshots embedded in the root README gallery.
 
-Recommended files:
+Available screenshots:
 
-- `dashboard.png` — dashboard summary and progress overview
-- `resume-analysis.png` — ATS-style score, strengths, improvements, and detected skills
-- `job-match.png` — matched, missing, and additional skills with category breakdown
-- `interview-practice.png` — interview setup or text interview session
-- `voice-interview.png` — microphone controls and editable transcript
-- `interview-evaluation.png` — rubric scores and answer feedback
-- `coaching.png` — coaching focus areas and next-practice plan
-- `targeted-practice.png` — focused practice or baseline-comparison summary
+- `dashboard.png` — interview progress, resume activity, recent results, and quick actions
+- `resume-analysis.png` — ATS-style score, section breakdown, strengths, improvements, and detected skills
+- `job-match.png` — matched, missing, and additional skills with category-level alignment
+- `voice-interview.png` — browser microphone controls, question playback, and editable transcript
+- `answer-evaluation.png` — rubric scores, strengths, improvement areas, missing points, and an improved answer
+- `ai-coaching.png` — coaching priorities, revision topics, communication guidance, and practice planning
+- `targeted-practice.png` — focused weakness practice with performance and baseline comparison
 
-Use a consistent browser size, crop unnecessary browser chrome, and prefer representative seeded/test data over real personal information.
+When replacing or adding screenshots, avoid including credentials, API keys, JWTs, private resume details, or other personal data.

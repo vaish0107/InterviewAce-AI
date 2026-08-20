@@ -270,9 +270,49 @@ With the services running, interactive API documentation is available at:
 
 The FastAPI endpoints are internal service endpoints and are normally called by the Spring Boot backend. The repository also contains an existing [API contract](docs/API_CONTRACT.md); when it differs from live Swagger output, treat the implemented routes and generated OpenAPI document as authoritative.
 
-## Screenshots
+## Application Screenshots
 
-Screenshots are intentionally not fabricated or linked before assets exist. See [`docs/screenshots/README.md`](docs/screenshots/README.md) for the recommended filenames and capture checklist.
+### Dashboard
+
+Overview of interview progress, resume activity, recent results, and available practice actions.
+
+![InterviewAce AI dashboard showing progress and activity](docs/screenshots/dashboard.png)
+
+### Resume Analysis
+
+Displays the ATS-style resume-quality score, section breakdown, detected strengths, improvements, and technical skills.
+
+![Resume analysis with ATS-style score and detected skills](docs/screenshots/resume-analysis.png)
+
+### Job Match
+
+Compares resume skills with a job description through matched, missing, additional, and category-level results.
+
+![Job Match skill-alignment results and category breakdown](docs/screenshots/job-match.png)
+
+### Voice Interview
+
+Demonstrates browser-assisted voice practice with question playback, microphone controls, and an editable transcript.
+
+![Voice interview screen with microphone controls and editable transcript](docs/screenshots/voice-interview.png)
+
+### AI Answer Evaluation
+
+Reviews rubric scores, answer strengths, improvement areas, missing points, and an example improved response.
+
+![AI answer evaluation with rubric scores and feedback](docs/screenshots/answer-evaluation.png)
+
+### AI Coaching
+
+Summarizes coaching priorities, revision topics, communication guidance, and the recommended next practice plan.
+
+![AI coaching report with focus areas and practice recommendations](docs/screenshots/ai-coaching.png)
+
+### Targeted Weakness Practice
+
+Shows focused interview practice for a selected weak area with performance and baseline comparison details.
+
+![Targeted weakness practice summary and baseline comparison](docs/screenshots/targeted-practice.png)
 
 ## Security & Privacy
 
