@@ -1,143 +1,312 @@
 # InterviewAce AI
 
-## Interview replay and coaching privacy
+InterviewAce AI is a full-stack, AI-assisted career and interview preparation platform. It helps users analyze resumes, compare detected skills with job descriptions, and practice text or voice interviews. Users can receive actionable answer feedback and adaptive follow-ups, replay completed sessions, generate coaching plans, target weak areas, and track progress over time.
 
-Completed interviews can be replayed from saved questions, answers, and existing evaluations. Replay never regenerates evaluation feedback automatically.
+## Key Features
 
-Coaching generation sends the AI service only the interview type, difficulty, question text, saved answer text, category, skill, adaptive-question flag, completed rubric scores, recorded weaknesses, and recorded missing key points. It does not send credentials, email, account data, database IDs, raw audio, raw resumes, or unrelated profile data. Coaching is practice guidance only and does not predict hiring outcomes, rank candidates, or infer intelligence or personality.
+### Resume Management
 
-## Project Overview
-InterviewAce AI is an AI-powered interview preparation platform designed to help job seekers improve their resumes, practice interviews, and build confidence before real-world interviews.
+- Upload PDF resumes for authenticated users.
+- Store, list, retrieve, and delete owned resumes.
+- Extract resume text and normalized technical skills.
 
-## Problem Statement
-Many candidates struggle to stand out in competitive hiring processes because they receive limited feedback on their resumes and insufficient personalized interview practice. Traditional preparation methods are often generic and do not adapt to a candidate's background, target role, or interview style.
+### Resume Analysis
 
-## Objectives
-- Help users improve resume quality and ATS compatibility.
-- Deliver personalized interview questions based on the user's target role.
-- Provide actionable feedback and scoring for resume and interview performance.
-- Support continuous progress tracking across multiple interview sessions.
+- Calculate an explainable ATS-style heuristic score.
+- Highlight detected strengths, areas to improve, recommendations, and technical skills.
+- Break the score into documented resume-quality signals.
 
-## Main Workflow
-1. User registers and logs in.
-2. User uploads a resume.
-3. The system extracts resume text and identifies skills.
-4. AI provides resume feedback and an ATS-style score.
-5. User chooses a target job role and interview type.
-6. AI generates personalized interview questions.
-7. User answers through text or browser-powered voice transcription.
-8. AI evaluates each answer.
-9. The platform generates feedback, scores, and improved answers.
-10. Users track deterministic performance analytics over multiple interview sessions.
+> The ATS-style score is a heuristic resume-quality indicator and is not an official score from an ATS vendor.
 
-## Interview Analytics
+### Job Match
 
-Interview analytics are calculated by the Spring Boot backend from persisted, completed answer evaluations. They never call the AI service and never assign zero scores to unanswered or unevaluated questions.
+- Paste a job description and compare its required skills with a selected resume.
+- Review matched skills, missing skills, additional resume skills, category breakdowns, strengths, and recommendations.
+- Revisit previous match analyses for each resume.
 
-```text
-Interview evaluations
-        ↓
-Deterministic aggregation
-        ↓
-Interview Summary
-        ↓
-Progress Analytics
-        ↓
-Dashboard
-```
+> Job Match measures detected skill alignment and does not predict hiring probability.
 
-Authenticated endpoints:
+### Interview Practice
 
-- `GET /api/interviews/{id}/summary` — owner-only per-interview completion and score summary.
-- `GET /api/interviews/progress` — current user's category, skill, rubric, and chronological trend analytics.
-- `GET /api/dashboard/summary` — current user's persisted resume, ATS, job-match, and interview counts/latest values.
+- Practice in text or browser-assisted voice mode.
+- Choose Technical, HR, or Mixed interviews; difficulty; and a question count from 3 to 20.
+- Optionally use an analyzed resume to ground questions in detected skills.
+- Save answers independently from evaluation and complete sessions when ready.
 
-Score averages use only evaluations whose status is `COMPLETED`. Category and skill results use the category and optional skill stored on each evaluated question. Strongest and lowest measured categories are returned only when at least two categories have evaluated data.
+### Voice Interview
 
-## Voice Interview Mode
+- Capture answers with the browser microphone and speech-recognition APIs.
+- Review and edit the transcript before saving it.
+- Read questions aloud with browser text-to-speech.
+- Fall back to text mode when speech recognition is unavailable.
+- Store the submitted transcript only; the current implementation does not upload or store raw audio.
 
-Voice mode is available at `/interviews/{id}/voice` alongside the existing text interview route. It uses browser speech capabilities and the same persisted interview session:
+### AI Answer Evaluation
 
-```text
-Browser microphone
-        ↓
-Browser speech recognition
-        ↓
-User-reviewed, editable transcript
-        ↓
-Existing Spring Boot answer endpoint
-        ↓
-Existing Gemini transcript evaluation
-```
+- Use Google Gemini to evaluate a saved answer.
+- Score relevance, correctness, completeness, and communication.
+- Return strengths, areas to improve, missing key points, and an example improved answer.
+- Persist completed feedback so it can be reviewed without regenerating it.
 
-Questions can be read aloud with browser text-to-speech, including an optional saved auto-read preference. Microphone permission is requested before the first recording. The transcript is never saved automatically: the user can correct recognition errors before submitting it through the existing answer endpoint. InterviewAce does not upload or store raw microphone audio.
+### Adaptive Follow-up Questions
 
-Speech recognition availability depends on browser support and may depend on the browser vendor's speech service. Unsupported browsers offer a direct switch back to the text interview.
+- Request an optional Gemini-generated follow-up based on the candidate's saved answer and limited recent context.
+- Limit each base question to two adaptive follow-ups.
+- Ground follow-ups in supplied answers without fabricating candidate experience.
 
-## Adaptive Follow-up Interviews
+### Interview History & Analytics
 
-After saving either a text answer or a voice transcript, the candidate can explicitly request an AI follow-up:
+- Review completed and in-progress sessions and their evaluated-answer counts.
+- See interview averages plus category, skill, rubric, and chronological performance trends.
+- Calculate analytics deterministically from persisted, completed evaluations; unanswered questions are not scored as zero.
 
-```text
-Deterministic base question → saved answer → Gemini follow-up decision
-→ optional persisted follow-up → existing answer evaluation → next base question
-```
+### Interview Replay
 
-Follow-ups are grounded only in the current question and answer plus at most three recent answered questions. InterviewAce does not fabricate experience, and allows at most two adaptive follow-ups per base question. Adaptive generation is optional: a provider failure never prevents answering, navigating, evaluating existing answers, or completing the interview.
+- Review completed questions, saved answers, and existing AI feedback.
+- Replay does not automatically regenerate evaluations.
 
-## Planned Features
-- Resume upload and parsing
-- Skills extraction and analysis
-- ATS-style resume scoring
-- Personalized interview question generation
-- Answer evaluation and improvement suggestions
-- Progress tracking and session history
-- Browser-based voice interview support
+### AI Coaching
 
-## Technology Stack
+- Generate a coaching summary from completed, saved interview data.
+- Review primary focus areas, revision topics, communication tips, recommendations, and a next-practice plan.
+
+### Targeted Weakness Practice
+
+- Start focused practice from a coaching recommendation or selected weak area.
+- Generate a short set of 3 or 5 targeted questions, evaluate responses, and review a practice summary.
+- Compare results with a source-interview baseline when enough relevant evaluated data exists.
+
+## Tech Stack
+
 ### Frontend
-- React
-- TypeScript
-- Vite
-- Tailwind CSS
-- React Router
+
+- React 19 and TypeScript 5.8
+- Vite 7
+- React Router 7
 - Axios
+- Tailwind CSS 4 and project CSS
+- React Hook Form, Zod, and React Icons
 
 ### Backend
-- Java 21
-- Spring Boot
-- Spring Security
-- JWT
-- Spring Data JPA
-- PostgreSQL
+
+- Java 21 and Spring Boot 3.5
+- Spring Security and JWT authentication
+- Spring Data JPA and Jakarta Validation
+- Maven
+- Springdoc OpenAPI / Swagger UI
 
 ### AI Service
-- Python
-- FastAPI
-- Resume text extraction
-- LLM integration
-- Browser speech recognition (frontend only; no raw audio storage)
 
-## High-Level Architecture
-InterviewAce AI will follow a modular architecture with three main services:
-- A React frontend for user experience and interview practice flows
-- A Spring Boot backend for authentication, user management, and persistence
-- A FastAPI AI service for resume analysis and interview generation/evaluation
+- Python 3.12+
+- FastAPI, Uvicorn, and Pydantic Settings
+- Google Gen AI SDK for Gemini
+- PyMuPDF for PDF extraction
+- httpx and pytest
 
-## MVP Scope
-- User registration and authentication
-- Resume upload and parsing
-- Resume feedback and ATS-style score
-- Interview question generation
-- Answer evaluation and feedback
-- Interview summaries, dashboard statistics, and progress tracking
+### Database
 
-## Development Phases
-1. Planning and architecture definition
-2. Backend foundation and database design
-3. Frontend experience and user flows
-4. AI service integration
-5. Testing, refinement, and deployment preparation
+- PostgreSQL
+- H2 for backend tests
 
-## Current Status
-Interview summary and deterministic progress analytics implemented
+### Development Tools
+
+- VS Code, Git, and GitHub
+- Swagger/OpenAPI
+- pytest, Maven tests, ESLint, and the TypeScript/Vite build
+
+## System Architecture
+
+```mermaid
+flowchart LR
+    User[User]
+    Frontend[React + TypeScript Frontend]
+    Backend[Spring Boot REST API]
+    DB[(PostgreSQL)]
+    AI[FastAPI AI Service]
+    Gemini[Google Gemini API]
+
+    User -->|Resume upload and interview practice| Frontend
+    Frontend -->|JWT-authenticated REST requests| Backend
+    Backend -->|Users, resumes, matches, sessions, evaluations, coaching| DB
+    Backend -->|Resume processing, questions, evaluation, follow-up, coaching, targeted practice| AI
+    AI -->|Answer evaluation, follow-up, coaching, targeted practice| Gemini
+```
+
+Resume extraction, skill detection, ATS-style scoring, job matching, and base-question generation are deterministic within the AI service. Gemini powers the generative evaluation and coaching workflows.
+
+## User Flow
+
+```mermaid
+flowchart LR
+    A[Resume Upload] --> B[Resume Analysis]
+    B --> C[Job Match]
+    C --> D[Interview Practice]
+    D --> E[AI Evaluation]
+    E --> F[Adaptive Follow-up]
+    F --> G[Interview Completion]
+    G --> H[Replay]
+    H --> I[Coaching]
+    I --> J[Targeted Practice]
+    J --> K[Progress Tracking]
+```
+
+Resume analysis and Job Match are useful preparation steps, but interviews can also be created without attaching a resume.
+
+## Project Structure
+
+```text
+InterviewAce-AI/
+|-- frontend/       React and TypeScript user interface
+|-- backend/        Spring Boot API, security, persistence, and orchestration
+|-- ai-service/     FastAPI resume and interview intelligence service
+|-- docs/           Architecture, API, database, and requirements documentation
+|-- README.md       Project overview and local-development guide
+`-- .gitignore      Repository ignore rules
+```
+
+## Running Locally
+
+### Prerequisites
+
+- Java 21
+- Node.js with npm
+- Python 3.12+
+- PostgreSQL
+- A Gemini API key for generative interview features
+
+InterviewAce runs as three local services. Configure PostgreSQL and environment variables first, then start each service in a separate terminal from the project root.
+
+### 1. Backend API
+
+```powershell
+cd backend
+.\mvnw.cmd spring-boot:run
+```
+
+Linux/macOS: `./mvnw spring-boot:run`
+
+### 2. AI Service
+
+For the first run, create the virtual environment and install dependencies:
+
+```powershell
+cd ai-service
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+Copy-Item .env.example .env
+uvicorn app.main:app --reload --port 8000
+```
+
+On Linux/macOS, activate with `source .venv/bin/activate` and copy the example with `cp .env.example .env`.
+
+### 3. Frontend
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+Local endpoints:
+
+- Application: <http://localhost:5173>
+- Backend API: <http://localhost:8080>
+- AI service: <http://localhost:8000>
+
+## Environment Configuration
+
+Copy the existing [`frontend/.env.example`](frontend/.env.example) and [`ai-service/.env.example`](ai-service/.env.example) files when local overrides are needed. Spring Boot reads its configuration directly from environment variables.
+
+| Service | Variables |
+| --- | --- |
+| Frontend | `VITE_API_BASE_URL` |
+| Backend/database | `DATABASE_URL`, `DATABASE_USERNAME`, `DATABASE_PASSWORD`, `PORT` |
+| Backend/security | `JWT_SECRET`, `JWT_EXPIRATION`, `FRONTEND_URL` |
+| Backend/integration | `RESUME_UPLOAD_DIR`, `MAX_RESUME_SIZE`, `AI_SERVICE_URL`, `AI_CONNECT_TIMEOUT_MS`, `AI_READ_TIMEOUT_MS` |
+| AI service | `AI_SERVICE_HOST`, `AI_SERVICE_PORT`, `MAX_RESUME_SIZE`, `GEMINI_API_KEY`, `GEMINI_MODEL` |
+
+The backend supplies development defaults for several settings, but database credentials and a strong JWT secret should be provided explicitly outside development. Do not commit `.env` files, API keys, database passwords, JWT secrets, or credentials.
+
+## Testing
+
+Run each command from its service directory.
+
+### AI Service
+
+```powershell
+python -m pytest
+```
+
+The AI service includes automated API and unit tests for resume analysis, matching, question generation, evaluation, follow-ups, coaching, and targeted practice.
+
+### Backend
+
+```powershell
+.\mvnw.cmd clean test
+```
+
+Linux/macOS: `./mvnw clean test`
+
+The backend includes Spring context, service, mapper, analytics, storage, matching, interview, and evaluation tests.
+
+### Frontend
+
+```powershell
+npm run lint
+npm run build
+```
+
+These commands run ESLint and the production TypeScript/Vite build checks.
+
+## API Documentation
+
+With the services running, interactive API documentation is available at:
+
+- Spring Boot Swagger UI: <http://localhost:8080/swagger-ui/index.html>
+- Spring Boot OpenAPI JSON: <http://localhost:8080/v3/api-docs>
+- FastAPI Swagger UI: <http://localhost:8000/docs>
+- FastAPI OpenAPI JSON: <http://localhost:8000/openapi.json>
+
+The FastAPI endpoints are internal service endpoints and are normally called by the Spring Boot backend. The repository also contains an existing [API contract](docs/API_CONTRACT.md); when it differs from live Swagger output, treat the implemented routes and generated OpenAPI document as authoritative.
+
+## Screenshots
+
+Screenshots are intentionally not fabricated or linked before assets exist. See [`docs/screenshots/README.md`](docs/screenshots/README.md) for the recommended filenames and capture checklist.
+
+## Security & Privacy
+
+- Spring Security protects application endpoints with stateless JWT authentication; registration, login, health, and API-documentation endpoints are public.
+- Resume, job-match, interview, replay, evaluation, analytics, coaching, and targeted-practice records are resolved against the authenticated user's ownership.
+- Voice mode stores only the transcript submitted by the user; raw microphone audio is not uploaded or stored in the current implementation.
+- Secrets and service configuration are supplied through environment variables and ignored local `.env` files.
+- The platform does not calculate hiring probability or perform personality inference, accent scoring, or webcam analysis.
+
+These safeguards describe the current application design and do not imply a security certification.
+
+## AI Usage Disclaimer
+
+- AI feedback and coaching are advisory tools for interview preparation.
+- ATS-style scoring is heuristic and is not an official vendor ATS result.
+- Skill matching describes detected alignment and is not a hiring prediction.
+- AI-generated output can be incomplete or incorrect and should be reviewed critically.
+
+## Future Improvements
+
+- Production deployment and environment hardening
+- Stronger cross-browser voice-recognition support
+- Improved frontend code splitting and performance
+- Richer progress visualizations
+- Optional external speech-to-text fallback
+- Broader question-bank customization
+
+## Project Purpose
+
+InterviewAce AI is a full-stack, AI-assisted interview preparation application built as a portfolio and final-year software project. It demonstrates a three-service architecture, authenticated data ownership, deterministic analysis, responsible generative-AI integration, and automated testing without claiming to replace professional career advice or real hiring decisions.
+
+## Further Documentation
+
+- [Architecture](docs/ARCHITECTURE.md)
+- [API contract](docs/API_CONTRACT.md)
+- [Database design](docs/DATABASE_DESIGN.md)
+- [Project requirements](docs/PROJECT_REQUIREMENTS.md)
