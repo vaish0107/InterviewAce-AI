@@ -1,4 +1,5 @@
 import json
+import logging
 
 import httpx
 from google import genai
@@ -10,6 +11,8 @@ from app.models.interview import (
     AnswerEvaluationRequest,
     AnswerEvaluationResponse,
 )
+
+logger = logging.getLogger(__name__)
 
 EVALUATION_NOTE = (
     "This feedback is AI-generated and should be treated as guidance "
@@ -90,6 +93,9 @@ class AnswerEvaluator:
     ) -> AnswerEvaluationResponse:
 
         if not self.settings.gemini_api_key.strip() and self.client is None:
+            logger.error(
+                "Answer evaluation configuration error: GEMINI_API_KEY is missing"
+            )
             raise EvaluationConfigurationError(
                 "Answer evaluation is not configured"
             )
@@ -140,12 +146,11 @@ class AnswerEvaluator:
             raise
 
         except errors.APIError as error:
-            # Server-side debugging only.
-            # This does NOT expose the Gemini API key.
-            print(
-                f"Gemini API error: "
-                f"code={error.code}, "
-                f"message={error.message}"
+            logger.error(
+                "Gemini answer evaluation request failed: "
+                "error_type=%s status_code=%s",
+                type(error).__name__,
+                error.code,
             )
 
             raise EvaluationUnavailableError(
@@ -158,9 +163,9 @@ class AnswerEvaluator:
             TimeoutError,
             ConnectionError,
         ) as error:
-            print(
-                "Gemini network/timeout error: "
-                f"{type(error).__name__}: {error}"
+            logger.error(
+                "Gemini answer evaluation network failure: error_type=%s",
+                type(error).__name__,
             )
 
             raise EvaluationUnavailableError(
@@ -173,9 +178,10 @@ class AnswerEvaluator:
             TypeError,
             json.JSONDecodeError,
         ) as error:
-            print(
-                "Gemini output validation error: "
-                f"{type(error).__name__}: {error}"
+            logger.error(
+                "Gemini answer evaluation output validation failed: "
+                "error_type=%s",
+                type(error).__name__,
             )
 
             raise EvaluationOutputError(

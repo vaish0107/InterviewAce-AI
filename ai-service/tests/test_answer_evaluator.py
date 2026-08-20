@@ -94,10 +94,12 @@ def test_gemini_timeout_is_returned_as_safe_unavailable_error() -> None:
         service.evaluate(AnswerEvaluationRequest(question="Question?", answer="A sufficiently long answer.", category="HR", skill=None, difficulty="MEDIUM"))
 
 
-def test_missing_api_key_is_rejected_without_network_call() -> None:
+def test_missing_api_key_is_rejected_without_network_call(caplog) -> None:
     service = AnswerEvaluator(Settings(gemini_api_key="", gemini_model="test-model"))
-    with pytest.raises(EvaluationConfigurationError):
+    with caplog.at_level("ERROR"), pytest.raises(EvaluationConfigurationError):
         service.evaluate(AnswerEvaluationRequest(question="Question?", answer="A sufficiently long answer.", category="HR", skill=None, difficulty="MEDIUM"))
+    assert "GEMINI_API_KEY is missing" in caplog.text
+    assert "test-key" not in caplog.text
 
 
 def test_endpoint_maps_unavailable_service_to_safe_error(monkeypatch) -> None:
@@ -115,6 +117,15 @@ def test_gemini_provider_errors_are_returned_as_safe_unavailable_errors(status_c
     service, _ = evaluator(error=provider_error)
     with pytest.raises(EvaluationUnavailableError, match="temporarily unavailable"):
         service.evaluate(AnswerEvaluationRequest(question="Question?", answer="A sufficiently long answer.", category="TECHNICAL", skill="Java", difficulty="MEDIUM"))
+
+
+def test_provider_error_logging_has_status_but_not_provider_detail(caplog) -> None:
+    provider_error = errors.ClientError(429, {"error": {"message": "sensitive provider detail"}})
+    service, _ = evaluator(error=provider_error)
+    with caplog.at_level("ERROR"), pytest.raises(EvaluationUnavailableError):
+        service.evaluate(AnswerEvaluationRequest(question="Question?", answer="A sufficiently long answer.", category="TECHNICAL", skill="Java", difficulty="MEDIUM"))
+    assert "status_code=429" in caplog.text
+    assert "sensitive provider detail" not in caplog.text
 
 
 def test_endpoint_response_schema_is_preserved(monkeypatch) -> None:
